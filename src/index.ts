@@ -7,7 +7,7 @@ export type { AcmeDirectory, AcmeAccount, AcmeOrder, AcmeAuthorization, AcmeChal
 export { AcmeError } from './acme/errors.ts'
 export { CA_URLS } from './acme/directory.ts'
 
-export { generateKeyPair, generateCsr } from './crypto'
+export { generateKeyPair, generateCsr } from './crypto/index.ts'
 export type { KeyType, KeyPairResult } from './crypto/keys.ts'
 
 export { getProvider } from './providers/index.ts'
