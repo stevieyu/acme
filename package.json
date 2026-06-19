@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "lint": "tsgo --noEmit",
+    "lint": "tsc --noEmit",
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage"
   },
@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
-    "@typescript/native-preview": "latest",
+    "typescript": "7.0.1-rc",
     "tsdown": "latest"
   },
   "main": "./dist/index.cjs",
