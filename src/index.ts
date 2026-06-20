@@ -3,6 +3,7 @@
 
 export { AcmeClient } from './acme/client.ts'
 export type { AcmeClientOptions, IssueCertificateOptions, CertificateResult } from './acme/client.ts'
+export type { EabCredentials } from './acme/account.ts'
 export type { AcmeDirectory, AcmeAccount, AcmeOrder, AcmeAuthorization, AcmeChallenge } from './acme/types.ts'
 export { AcmeError } from './acme/errors.ts'
 export { CA_URLS } from './acme/directory.ts'

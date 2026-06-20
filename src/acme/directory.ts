@@ -5,7 +5,7 @@ export type CaName =
   | 'letsencrypt' | 'letsencrypt-staging'
   | 'zerossl'
   | 'google' | 'google-staging'
-  | 'ssl-com'
+  | 'ssl-com' | 'ssl-com-ecc'
   | 'buypass' | 'buypass-test'
   | 'pebble'
 
@@ -16,6 +16,7 @@ const caUrls: Record<CaName, string> = {
   'google': 'https://dv.acme-v3.pki.goog/directory',
   'google-staging': 'https://dv.acme-v3.pki.goog/directory',
   'ssl-com': 'https://acme.ssl.com/sslcom-dv-rsa',
+  'ssl-com-ecc': 'https://acme.ssl.com/sslcom-dv-ecc',
   'buypass': 'https://api.buypass.com/acme/directory',
   'buypass-test': 'https://api.test4.buypass.no/acme/directory',
   'pebble': 'https://localhost:14000/dir',

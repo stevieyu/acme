@@ -1,7 +1,7 @@
 import type { DnsProvider } from '../providers/types.ts'
 import type { Logger } from '../util/logger.ts'
-import { checkDnsPropagation } from './doh.ts'
-import { purgeDohCache } from './purge.ts'
+import { sleep } from '../util/retry.ts'
+import { checkDnsPropagation, purgeDohCache } from './doh.ts'
 
 export interface ResolveDns01Options {
   provider: DnsProvider
@@ -13,11 +13,14 @@ export interface ResolveDns01Options {
   skipPropagation?: boolean
 }
 
+// ponytail: acme.sh sleeps 20s before first DNS check.
+const INITIAL_SETTLE_MS = 20_000
+
 export async function resolveDns01Challenge(options: ResolveDns01Options): Promise<void> {
   const {
     provider, domain, txtValue, logger,
-    propagationTimeoutMs = 120000,
-    propagationIntervalMs = 5000,
+    propagationTimeoutMs = 600_000,
+    propagationIntervalMs = 10_000,
     skipPropagation = false,
   } = options
 
@@ -31,17 +34,24 @@ export async function resolveDns01Challenge(options: ResolveDns01Options): Promi
     return
   }
 
-  // Purge caches before checking
+  // acme.sh: "Sleeping for 20 seconds first" before any DNS check
+  logger.info(`waiting ${INITIAL_SETTLE_MS / 1000}s for DNS to settle before checking...`)
+  await sleep(INITIAL_SETTLE_MS)
+
+  // Purge DoH caches before polling (acme.sh: __purge_txt before each retry)
   await purgeDohCache(fulldomain)
 
-  logger.info(`waiting for DNS propagation: ${fulldomain}`)
+  const maxAttempts = Math.ceil(propagationTimeoutMs / propagationIntervalMs)
+  logger.info(`checking DNS propagation: ${fulldomain} (timeout ${propagationTimeoutMs / 1000}s, interval ${propagationIntervalMs / 1000}s)`)
+
   const propagated = await checkDnsPropagation(fulldomain, txtValue, {
     intervalMs: propagationIntervalMs,
-    maxAttempts: Math.ceil(propagationTimeoutMs / propagationIntervalMs),
+    maxAttempts,
+    logger,
   })
 
   if (!propagated) {
-    logger.warn(`DNS propagation timeout for ${fulldomain}, proceeding anyway`)
+    logger.warn(`DNS propagation timeout after ${propagationTimeoutMs / 1000}s for ${fulldomain}, proceeding anyway`)
   } else {
     logger.info(`DNS propagation confirmed for ${fulldomain}`)
   }

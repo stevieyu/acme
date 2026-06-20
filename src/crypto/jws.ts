@@ -1,4 +1,4 @@
-import { base64urlEncode } from './digest.ts'
+import { base64urlEncode, base64urlDecode } from './digest.ts'
 import { publicKeyToJwk, computeThumbprint } from './jwk.ts'
 
 export interface JwsInput {
@@ -71,6 +71,34 @@ export async function signJwsWithKid(
     url,
   }
   return signJws({ privateKey, payload, protectedHeader })
+}
+
+// EAB (External Account Binding) per RFC 8555 §7.3.4
+export async function signEab(
+  eabKid: string,
+  eabHmacKey: string,
+  accountJwk: JsonWebKey,
+  url: string,
+): Promise<FlattenedJws> {
+  const keyBytes = base64urlDecode(eabHmacKey)
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw', keyBytes.buffer as ArrayBuffer, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  )
+
+  // Filter JWK to public fields only
+  const publicJwk = accountJwk.kty === 'EC'
+    ? { crv: accountJwk.crv, kty: 'EC', x: accountJwk.x, y: accountJwk.y }
+    : { e: accountJwk.e, kty: 'RSA', n: accountJwk.n }
+
+  const protectedHeader = base64urlEncode(
+    new TextEncoder().encode(JSON.stringify({ alg: 'HS256', kid: eabKid, url })),
+  )
+  const payload = base64urlEncode(new TextEncoder().encode(JSON.stringify(publicJwk)))
+  const signingInput = `${protectedHeader}.${payload}`
+
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(signingInput))
+
+  return { payload, protected: protectedHeader, signature: base64urlEncode(signature) }
 }
 
 function getJwsAlg(key: CryptoKey): string {

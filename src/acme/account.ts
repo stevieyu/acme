@@ -1,6 +1,12 @@
-import { signJwsWithJwkThumbprint, signJwsWithKid } from '../crypto/index.ts'
+import { signJwsWithJwkThumbprint, signJwsWithKid, signEab } from '../crypto/index.ts'
+import { publicKeyToJwk } from '../crypto/jwk.ts'
 import type { AcmeAccount } from './types.ts'
 import type { AcmeHttp } from './http.ts'
+
+export interface EabCredentials {
+  kid: string
+  hmacKey: string
+}
 
 export async function registerAccount(
   http: AcmeHttp,
@@ -9,11 +15,21 @@ export async function registerAccount(
   publicKey: CryptoKey,
   contact?: string[],
   termsOfServiceAgreed: boolean = true,
+  eab?: EabCredentials,
 ): Promise<{ account: AcmeAccount; kid: string }> {
-  const payload = JSON.stringify({
+  const payloadObj: Record<string, unknown> = {
     termsOfServiceAgreed,
     contact: contact ?? [],
-  })
+  }
+
+  // EAB: sign the account JWK with HMAC key and embed as externalAccountBinding
+  if (eab) {
+    const jwk = await publicKeyToJwk(publicKey)
+    const eabJws = await signEab(eab.kid, eab.hmacKey, jwk, newAccountUrl)
+    payloadObj.externalAccountBinding = eabJws
+  }
+
+  const payload = JSON.stringify(payloadObj)
 
   const response = await http.signedRequest<AcmeAccount>(
     newAccountUrl,

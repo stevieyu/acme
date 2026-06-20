@@ -8,6 +8,7 @@ import { AcmeHttp } from './http.ts'
 import type { CaName } from './directory.ts'
 import { fetchDirectory, getDirectoryUrl } from './directory.ts'
 import { registerAccount, getAccount } from './account.ts'
+import type { EabCredentials } from './account.ts'
 import {
   createOrder, getAuthorization, getDns01Challenge,
   answerChallenge, pollChallenge, finalizeOrder,
@@ -15,11 +16,21 @@ import {
 } from './order.ts'
 import type { AcmeDirectory, AcmeOrder, AcmeAuthorization, AcmeChallenge } from './types.ts'
 import { AcmeError } from './errors.ts'
+import { checkDnsPropagation, purgeDohCache } from '../dns/doh.ts'
+import { sleep } from '../util/retry.ts'
+
+// ponytail: acme.sh auto-switches SSL.com RSA→ECC endpoint when key type is ECC
+const SSLCOM_RSA = 'https://acme.ssl.com/sslcom-dv-rsa'
+const SSLCOM_ECC = 'https://acme.ssl.com/sslcom-dv-ecc'
+
+// ponytail: acme.sh sleeps 20s before first DNS check.
+const INITIAL_SETTLE_MS = 20_000
 
 export interface AcmeClientOptions {
   directoryUrl: CaName | (string & {})
   accountContact?: string[]
   accountKey?: CryptoKeyPair
+  eab?: EabCredentials
   logger?: LogLevel | Logger
   termsOfServiceAgreed?: boolean
 }
@@ -28,6 +39,8 @@ export interface IssueCertificateOptions {
   domains: string[]
   keyType?: KeyType
   dns: DnsProvider
+  propagationTimeoutMs?: number
+  propagationIntervalMs?: number
 }
 
 export interface CertificateResult {
@@ -41,6 +54,7 @@ export class AcmeClient {
   private directoryUrl: string
   private accountContact?: string[]
   private accountKeyPair?: CryptoKeyPair
+  private eab?: EabCredentials
   private termsOfServiceAgreed: boolean
   private directory?: AcmeDirectory
   private http?: AcmeHttp
@@ -51,6 +65,7 @@ export class AcmeClient {
     this.logger = createLogger(options.logger ?? 'info')
     this.directoryUrl = getDirectoryUrl(options.directoryUrl)
     this.accountContact = options.accountContact
+    this.eab = options.eab
     this.termsOfServiceAgreed = options.termsOfServiceAgreed ?? true
     if (options.accountKey) {
       this.accountKeyPair = options.accountKey
@@ -100,7 +115,7 @@ export class AcmeClient {
       const { kid } = await registerAccount(
         http, this.directory!.newAccount,
         this.accountKeyPair.privateKey, this.accountKeyPair.publicKey,
-        this.accountContact, this.termsOfServiceAgreed,
+        this.accountContact, this.termsOfServiceAgreed, this.eab,
       )
       this.kid = kid
       this.logger.info('registered new account', kid)
@@ -114,7 +129,17 @@ export class AcmeClient {
   }
 
   async issueCertificate(options: IssueCertificateOptions): Promise<CertificateResult> {
-    const { domains, keyType = 'ec-256', dns } = options
+    const { domains, keyType = 'ec-256', dns, propagationTimeoutMs = 600_000, propagationIntervalMs = 10_000 } = options
+
+    // ponytail: acme.sh auto-switches SSL.com RSA→ECC endpoint for EC key types
+    if (keyType.startsWith('ec') && this.directoryUrl === SSLCOM_RSA) {
+      this.logger.info('switching SSL.com endpoint from RSA to ECC for EC key type')
+      this.directoryUrl = SSLCOM_ECC
+      this.directory = undefined
+      this.http = undefined
+      this.noncePool = undefined
+      this.kid = undefined
+    }
 
     const http = await this.ensureHttp()
     const dir = await this.ensureDirectory()
@@ -152,6 +177,23 @@ export class AcmeClient {
           { fulldomain, txtvalue: txtValue },
         )
 
+        // Wait for DNS propagation before answering challenge (acme.sh: _check_dns_entries)
+        this.logger.info(`waiting ${INITIAL_SETTLE_MS / 1000}s for DNS to settle before checking...`)
+        await sleep(INITIAL_SETTLE_MS)
+        await purgeDohCache(fulldomain)
+        const maxAttempts = Math.ceil(propagationTimeoutMs / propagationIntervalMs)
+        this.logger.info(`checking DNS propagation: ${fulldomain} (timeout ${propagationTimeoutMs / 1000}s, interval ${propagationIntervalMs / 1000}s)`)
+        const propagated = await checkDnsPropagation(fulldomain, txtValue, {
+          intervalMs: propagationIntervalMs,
+          maxAttempts,
+          logger: this.logger,
+        })
+        if (!propagated) {
+          this.logger.warn(`DNS propagation timeout after ${propagationTimeoutMs / 1000}s for ${fulldomain}, proceeding anyway`)
+        } else {
+          this.logger.info(`DNS propagation confirmed for ${fulldomain}`)
+        }
+
         // Answer challenge
         await answerChallenge(http, challenge.url, account.privateKey, account.kid)
         this.logger.info(`challenge answered for ${domain}`)
@@ -182,16 +224,21 @@ export class AcmeClient {
     })
 
     this.logger.info('finalizing order with CSR')
-    await finalizeOrder(http, order.finalize, account.privateKey, account.kid, csrPem)
+    let finalizedOrder = await finalizeOrder(http, order.finalize, account.privateKey, account.kid, csrPem)
+    this.logger.info(`order status after finalize: ${finalizedOrder.status}`)
 
-    // 4. Poll for certificate
-    const orderUrl = dir.newOrder + '/' + Math.random().toString(36).slice(2) // placeholder
-    // Actually we need the order URL from Location header - let's use finalize URL parent
-    // For now, poll via the finalize URL's order
-    const finalizedOrder = await pollFinalizeOrder(http, order, account.privateKey, account.kid)
+    // 4. Poll for certificate if still processing
+    // ponytail: finalize response may already contain valid status + certificate URL
+    if (finalizedOrder.status === 'processing') {
+      const orderUrl = order.finalize.replace(/\/finalize\/?$/, '')
+      this.logger.info('order is processing, polling for completion...')
+      finalizedOrder = await pollOrder(http, orderUrl, account.privateKey, account.kid, {
+        timeoutMs: 120_000, intervalMs: 2000,
+      })
+    }
 
-    if (!finalizedOrder.certificate) {
-      throw new AcmeError({ type: 'about:blank', detail: 'Order completed but no certificate URL' })
+    if (finalizedOrder.status !== 'valid' || !finalizedOrder.certificate) {
+      throw new AcmeError({ type: 'about:blank', detail: `Order ended with status "${finalizedOrder.status}", no certificate URL` })
     }
 
     // 5. Download certificate
@@ -253,22 +300,6 @@ export class AcmeClient {
     const account = await this.ensureAccount()
     return downloadCertificate(http, certificateUrl, account.privateKey, account.kid)
   }
-}
-
-// Internal helper to poll order status after finalize
-async function pollFinalizeOrder(
-  http: AcmeHttp,
-  order: AcmeOrder,
-  privateKey: CryptoKey,
-  kid: string,
-): Promise<AcmeOrder> {
-  // We need the order URL. In real ACME, it comes from the Location header of the new-order response.
-  // For our implementation, we'll use the finalize URL to derive the order URL.
-  // This is a simplification - the proper way is to capture the Location header.
-  // ponytail: poll order via the finalize URL's parent path
-  const orderUrl = order.finalize.replace(/\/finalize\/?$/, '')
-
-  return pollOrder(http, orderUrl, privateKey, kid, { timeoutMs: 120000, intervalMs: 2000 })
 }
 
 function toPem(der: ArrayBuffer, label: string): string {
