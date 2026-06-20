@@ -7,19 +7,19 @@ export type CaName =
   | 'google' | 'google-staging'
   | 'ssl-com' | 'ssl-com-ecc'
   | 'buypass' | 'buypass-test'
-  | 'pebble'
+  | 'actalis'
 
 const caUrls: Record<CaName, string> = {
   'letsencrypt': 'https://acme-v02.api.letsencrypt.org/directory',
   'letsencrypt-staging': 'https://acme-staging-v02.api.letsencrypt.org/directory',
   'zerossl': 'https://acme.zerossl.com/v2/DV90',
-  'google': 'https://dv.acme-v3.pki.goog/directory',
-  'google-staging': 'https://dv.acme-v3.pki.goog/directory',
+  'google': 'https://dv.acme-v02.api.pki.goog/directory',
+  'google-staging': 'https://dv.acme-v02.test-api.pki.goog/directory',
   'ssl-com': 'https://acme.ssl.com/sslcom-dv-rsa',
   'ssl-com-ecc': 'https://acme.ssl.com/sslcom-dv-ecc',
   'buypass': 'https://api.buypass.com/acme/directory',
   'buypass-test': 'https://api.test4.buypass.no/acme/directory',
-  'pebble': 'https://localhost:14000/dir',
+  'actalis': 'https://acme-api.actalis.com/acme/directory',
 }
 
 /** Well-known CA directory URLs. Pass a `CaName` for completion, or any custom URL string. */
