@@ -1,3 +1,6 @@
+packages:
+  - examples
+
 minimumReleaseAgeExclude:
   - '@typescript/typescript-aix-ppc64@7.0.1-rc'
   - '@typescript/typescript-darwin-arm64@7.0.1-rc'
