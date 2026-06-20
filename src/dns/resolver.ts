@@ -10,17 +10,23 @@ export interface ResolveDns01Options {
   logger: Logger
   propagationTimeoutMs?: number
   propagationIntervalMs?: number
+  dnsSettleMs?: number
+  dohTimeoutMs?: number
+  dohMaxAttempts?: number
   skipPropagation?: boolean
 }
 
 // ponytail: acme.sh sleeps 20s before first DNS check.
-const INITIAL_SETTLE_MS = 20_000
+const DEFAULT_SETTLE_MS = 20_000
 
 export async function resolveDns01Challenge(options: ResolveDns01Options): Promise<void> {
   const {
     provider, domain, txtValue, logger,
     propagationTimeoutMs = 600_000,
     propagationIntervalMs = 10_000,
+    dnsSettleMs = DEFAULT_SETTLE_MS,
+    dohTimeoutMs,
+    dohMaxAttempts,
     skipPropagation = false,
   } = options
 
@@ -35,18 +41,19 @@ export async function resolveDns01Challenge(options: ResolveDns01Options): Promi
   }
 
   // acme.sh: "Sleeping for 20 seconds first" before any DNS check
-  logger.info(`waiting ${INITIAL_SETTLE_MS / 1000}s for DNS to settle before checking...`)
-  await sleep(INITIAL_SETTLE_MS)
+  logger.info(`waiting ${dnsSettleMs / 1000}s for DNS to settle before checking...`)
+  await sleep(dnsSettleMs)
 
   // Purge DoH caches before polling (acme.sh: __purge_txt before each retry)
-  await purgeDohCache(fulldomain)
+  await purgeDohCache(fulldomain, dohTimeoutMs)
 
-  const maxAttempts = Math.ceil(propagationTimeoutMs / propagationIntervalMs)
-  logger.info(`checking DNS propagation: ${fulldomain} (timeout ${propagationTimeoutMs / 1000}s, interval ${propagationIntervalMs / 1000}s)`)
+  const maxAttempts = dohMaxAttempts ?? Math.ceil(propagationTimeoutMs / propagationIntervalMs)
+  logger.info(`checking DNS propagation: ${fulldomain} (timeout ${propagationTimeoutMs / 1000}s, interval ${propagationIntervalMs / 1000}s, maxAttempts ${maxAttempts})`)
 
   const propagated = await checkDnsPropagation(fulldomain, txtValue, {
     intervalMs: propagationIntervalMs,
     maxAttempts,
+    dohTimeoutMs,
     logger,
   })
 

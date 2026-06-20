@@ -2,23 +2,20 @@ import type { AcmeDirectory } from './types.ts'
 
 /** Known CA directory names */
 export type CaName =
-  | 'letsencrypt' | 'letsencrypt-staging'
+  | 'letsencrypt' | 'letsencrypt_test'
   | 'zerossl'
-  | 'google' | 'google-staging'
-  | 'ssl-com' | 'ssl-com-ecc'
-  | 'buypass' | 'buypass-test'
+  | 'google' | 'google_test'
+  | 'sslcom' | 'sslcom-ecc'
   | 'actalis'
 
 const caUrls: Record<CaName, string> = {
   'letsencrypt': 'https://acme-v02.api.letsencrypt.org/directory',
-  'letsencrypt-staging': 'https://acme-staging-v02.api.letsencrypt.org/directory',
+  'letsencrypt_test': 'https://acme-staging-v02.api.letsencrypt.org/directory',
   'zerossl': 'https://acme.zerossl.com/v2/DV90',
   'google': 'https://dv.acme-v02.api.pki.goog/directory',
-  'google-staging': 'https://dv.acme-v02.test-api.pki.goog/directory',
-  'ssl-com': 'https://acme.ssl.com/sslcom-dv-rsa',
-  'ssl-com-ecc': 'https://acme.ssl.com/sslcom-dv-ecc',
-  'buypass': 'https://api.buypass.com/acme/directory',
-  'buypass-test': 'https://api.test4.buypass.no/acme/directory',
+  'google_test': 'https://dv.acme-v02.test-api.pki.goog/directory',
+  'sslcom': 'https://acme.ssl.com/sslcom-dv-rsa',
+  'sslcom-ecc': 'https://acme.ssl.com/sslcom-dv-ecc',
   'actalis': 'https://acme-api.actalis.com/acme/directory',
 }
 

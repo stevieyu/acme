@@ -39,8 +39,16 @@ export interface IssueCertificateOptions {
   domains: string[]
   keyType?: KeyType
   dns: DnsProvider
+  /** Total time to wait for DNS propagation (default: 600s) */
   propagationTimeoutMs?: number
+  /** Interval between DNS checks (default: 10s) */
   propagationIntervalMs?: number
+  /** Wait time before first DNS check (default: 20s, acme.sh behavior) */
+  dnsSettleMs?: number
+  /** Single DoH request timeout (default: 10s) */
+  dohTimeoutMs?: number
+  /** Override max polling attempts (default: propagationTimeoutMs / propagationIntervalMs) */
+  dohMaxAttempts?: number
 }
 
 export interface CertificateResult {
@@ -129,7 +137,14 @@ export class AcmeClient {
   }
 
   async issueCertificate(options: IssueCertificateOptions): Promise<CertificateResult> {
-    const { domains, keyType = 'ec-256', dns, propagationTimeoutMs = 600_000, propagationIntervalMs = 10_000 } = options
+    const {
+      domains, keyType = 'ec-256', dns,
+      propagationTimeoutMs = 600_000,
+      propagationIntervalMs = 10_000,
+      dnsSettleMs = INITIAL_SETTLE_MS,
+      dohTimeoutMs,
+      dohMaxAttempts,
+    } = options
 
     // ponytail: acme.sh auto-switches SSL.com RSA→ECC endpoint for EC key types
     if (keyType.startsWith('ec') && this.directoryUrl === SSLCOM_RSA) {
@@ -178,14 +193,15 @@ export class AcmeClient {
         )
 
         // Wait for DNS propagation before answering challenge (acme.sh: _check_dns_entries)
-        this.logger.info(`waiting ${INITIAL_SETTLE_MS / 1000}s for DNS to settle before checking...`)
-        await sleep(INITIAL_SETTLE_MS)
-        await purgeDohCache(fulldomain)
-        const maxAttempts = Math.ceil(propagationTimeoutMs / propagationIntervalMs)
-        this.logger.info(`checking DNS propagation: ${fulldomain} (timeout ${propagationTimeoutMs / 1000}s, interval ${propagationIntervalMs / 1000}s)`)
+        this.logger.info(`waiting ${dnsSettleMs / 1000}s for DNS to settle before checking...`)
+        await sleep(dnsSettleMs)
+        await purgeDohCache(fulldomain, dohTimeoutMs)
+        const maxAttempts = dohMaxAttempts ?? Math.ceil(propagationTimeoutMs / propagationIntervalMs)
+        this.logger.info(`checking DNS propagation: ${fulldomain} (timeout ${propagationTimeoutMs / 1000}s, interval ${propagationIntervalMs / 1000}s, maxAttempts ${maxAttempts})`)
         const propagated = await checkDnsPropagation(fulldomain, txtValue, {
           intervalMs: propagationIntervalMs,
           maxAttempts,
+          dohTimeoutMs,
           logger: this.logger,
         })
         if (!propagated) {

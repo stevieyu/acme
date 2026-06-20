@@ -19,7 +19,10 @@ export async function registerAccount(
 ): Promise<{ account: AcmeAccount; kid: string }> {
   const payloadObj: Record<string, unknown> = {
     termsOfServiceAgreed,
-    contact: contact ?? [],
+  }
+  // ponytail: only include contact when non-empty, matching acme.sh behavior
+  if (contact?.length) {
+    payloadObj.contact = contact
   }
 
   // EAB: sign the account JWK with HMAC key and embed as externalAccountBinding
