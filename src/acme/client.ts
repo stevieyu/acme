@@ -5,6 +5,7 @@ import type { Logger, LogLevel } from '../util/logger.ts'
 import type { DnsProvider } from '../providers/types.ts'
 import { NoncePool } from './nonce.ts'
 import { AcmeHttp } from './http.ts'
+import type { CaName } from './directory.ts'
 import { fetchDirectory, getDirectoryUrl } from './directory.ts'
 import { registerAccount, getAccount } from './account.ts'
 import {
@@ -16,7 +17,7 @@ import type { AcmeDirectory, AcmeOrder, AcmeAuthorization, AcmeChallenge } from 
 import { AcmeError } from './errors.ts'
 
 export interface AcmeClientOptions {
-  directoryUrl: string
+  directoryUrl: CaName | (string & {})
   accountContact?: string[]
   accountKey?: CryptoKeyPair
   logger?: LogLevel | Logger

@@ -6,6 +6,7 @@ export type { AcmeClientOptions, IssueCertificateOptions, CertificateResult } fr
 export type { AcmeDirectory, AcmeAccount, AcmeOrder, AcmeAuthorization, AcmeChallenge } from './acme/types.ts'
 export { AcmeError } from './acme/errors.ts'
 export { CA_URLS } from './acme/directory.ts'
+export type { CaName } from './acme/directory.ts'
 
 export { generateKeyPair, generateCsr } from './crypto/index.ts'
 export type { KeyType, KeyPairResult } from './crypto/keys.ts'
