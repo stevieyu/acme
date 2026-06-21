@@ -66,8 +66,9 @@ jobs:
 
       - name: Summary
         run: |
+          package_name=$(node -p "require('./package.json').name")
           echo "## Published to npm" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Package: \`@stvy/fund-indicators@${GITHUB_REF_NAME#v}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Registry: https://www.npmjs.com/package/@stvy/fund-indicators" >> $GITHUB_STEP_SUMMARY
+          echo "- Package: \`${package_name}@${GITHUB_REF_NAME#v}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Registry: https://www.npmjs.com/package/${package_name}" >> $GITHUB_STEP_SUMMARY
           echo "- Includes browser bundles ESM" >> $GITHUB_STEP_SUMMARY
