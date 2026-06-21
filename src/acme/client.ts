@@ -7,7 +7,7 @@ import { NoncePool } from './nonce.ts'
 import { AcmeHttp } from './http.ts'
 import type { CaName } from './directory.ts'
 import { _initAPI, getDirectoryUrl } from './directory.ts'
-import { _regAccount } from './account.ts'
+import { _regAccount, _getAccount } from './account.ts'
 import type { EabCredentials } from './account.ts'
 import {
   _createOrder, _getAuthorization, _getDns01Challenge,
@@ -31,9 +31,17 @@ export interface AcmeClientOptions {
   directoryUrl: CaName | (string & {})
   accountContact?: string[]
   accountKey?: CryptoKeyPair
+  /** Previously saved account URL (kid) to skip registration */
+  accountUrl?: string
   eab?: EabCredentials
   logger?: LogLevel | Logger
   termsOfServiceAgreed?: boolean
+}
+
+/** Account info for persistence — pass back via AcmeClientOptions on next run */
+export interface AccountInfo {
+  kid: string
+  keyPair: CryptoKeyPair
 }
 
 export interface IssueCertificateOptions {
@@ -81,6 +89,25 @@ export class AcmeClient {
     if (options.accountKey) {
       this.accountKeyPair = options.accountKey
     }
+    if (options.accountUrl) {
+      this.ACCOUNT_URL = options.accountUrl
+    }
+  }
+
+  /** Current account URL (kid), available after ensureAccount() or issue() */
+  get accountUrl(): string | undefined { return this.ACCOUNT_URL }
+
+  /** Current account key pair, available after ensureAccount() or issue() */
+  get accountKey(): CryptoKeyPair | undefined { return this.accountKeyPair }
+
+  /**
+   * Ensure account exists and return info for persistence.
+   * Call this before issue() if you want to save account state,
+   * or after issue() to capture the auto-created account.
+   */
+  async ensureAccount(): Promise<AccountInfo> {
+    const { privateKey, publicKey, kid } = await this._ensureAccount()
+    return { kid, keyPair: { privateKey, publicKey } }
   }
 
   // acme.sh L2878: _initAPI() — fetch ACME directory
@@ -118,14 +145,28 @@ export class AcmeClient {
       this.accountKeyPair = { privateKey: kp.privateKey, publicKey: kp.publicKey }
     }
 
-    // acme.sh L4738: account registration (acme.sh calls _regAccount directly, no onlyReturnExisting)
-    const { kid } = await _regAccount(
-      http, this.directory!.newAccount,
-      this.accountKeyPair.privateKey, this.accountKeyPair.publicKey,
-      this.accountContact, this.termsOfServiceAgreed, this.eab,
-    )
-    this.ACCOUNT_URL = kid
-    this.logger.info('registered new account', kid)
+    // acme.sh L4738: try onlyReturnExisting lookup first, register only if not found
+    try {
+      const { kid } = await _getAccount(
+        http, this.directory!.newAccount,
+        this.accountKeyPair.privateKey, this.accountKeyPair.publicKey,
+      )
+      this.ACCOUNT_URL = kid
+      this.logger.info('found existing account', kid)
+    } catch (err) {
+      // accountDoesNotExist → fall through to registration
+      if (err instanceof AcmeError && err.problem.type === 'urn:ietf:params:acme:error:accountDoesNotExist') {
+        const { kid } = await _regAccount(
+          http, this.directory!.newAccount,
+          this.accountKeyPair.privateKey, this.accountKeyPair.publicKey,
+          this.accountContact, this.termsOfServiceAgreed, this.eab,
+        )
+        this.ACCOUNT_URL = kid
+        this.logger.info('registered new account', kid)
+      } else {
+        throw err
+      }
+    }
 
     return {
       privateKey: this.accountKeyPair.privateKey,
