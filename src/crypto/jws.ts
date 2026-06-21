@@ -36,6 +36,7 @@ export async function _sign(input: JwsInput): Promise<FlattenedJws> {
 }
 
 // _signWithJwk: sign with JWK in header (for account registration)
+// acme.sh L2305-2306: protected header field order: nonce, url, alg, jwk
 export async function _signWithJwk(
   privateKey: CryptoKey,
   publicKey: CryptoKey,
@@ -44,18 +45,16 @@ export async function _signWithJwk(
   nonce: string,
 ): Promise<FlattenedJws> {
   const jwk = await _calcjwk(publicKey)
+  // ponytail: match acme.sh JWK field order (crv,kty,x,y for EC; e,kty,n for RSA)
+  const jwkObj = jwk.kty === 'EC'
+    ? { crv: jwk.crv, kty: 'EC', x: jwk.x, y: jwk.y }
+    : { e: jwk.e, kty: 'RSA', n: jwk.n }
   const protectedHeader: Record<string, unknown> = {
-    alg: getJwsAlg(privateKey),
-    jwk: { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y, e: jwk.e, n: jwk.n },
     nonce,
     url,
+    alg: getJwsAlg(privateKey),
+    jwk: jwkObj,
   }
-  // Remove undefined fields from jwk
-  const jwkClean: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(protectedHeader.jwk as Record<string, unknown>)) {
-    if (v !== undefined) jwkClean[k] = v
-  }
-  protectedHeader.jwk = jwkClean
   return _sign({ privateKey, payload, protectedHeader })
 }
 

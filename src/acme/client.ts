@@ -7,7 +7,7 @@ import { NoncePool } from './nonce.ts'
 import { AcmeHttp } from './http.ts'
 import type { CaName } from './directory.ts'
 import { _initAPI, getDirectoryUrl } from './directory.ts'
-import { _regAccount, _getAccount } from './account.ts'
+import { _regAccount } from './account.ts'
 import type { EabCredentials } from './account.ts'
 import {
   _createOrder, _getAuthorization, _getDns01Challenge,
@@ -118,21 +118,14 @@ export class AcmeClient {
       this.accountKeyPair = { privateKey: kp.privateKey, publicKey: kp.publicKey }
     }
 
-    // Try to find existing account first
-    try {
-      const { kid } = await _getAccount(http, this.directory!.newAccount, this.accountKeyPair.privateKey, this.accountKeyPair.publicKey)
-      this.ACCOUNT_URL = kid
-      this.logger.info('found existing account', kid)
-    } catch {
-      // acme.sh L3850: _regAccount — register new account
-      const { kid } = await _regAccount(
-        http, this.directory!.newAccount,
-        this.accountKeyPair.privateKey, this.accountKeyPair.publicKey,
-        this.accountContact, this.termsOfServiceAgreed, this.eab,
-      )
-      this.ACCOUNT_URL = kid
-      this.logger.info('registered new account', kid)
-    }
+    // acme.sh L4738: account registration (acme.sh calls _regAccount directly, no onlyReturnExisting)
+    const { kid } = await _regAccount(
+      http, this.directory!.newAccount,
+      this.accountKeyPair.privateKey, this.accountKeyPair.publicKey,
+      this.accountContact, this.termsOfServiceAgreed, this.eab,
+    )
+    this.ACCOUNT_URL = kid
+    this.logger.info('registered new account', kid)
 
     return {
       privateKey: this.accountKeyPair.privateKey,
