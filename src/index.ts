@@ -4,6 +4,7 @@
 export { AcmeClient } from './acme/client.ts'
 export type { AcmeClientOptions, AccountInfo, IssueCertificateOptions, IssueResult } from './acme/client.ts'
 export type { EabCredentials } from './acme/account.ts'
+export { _getZeroSslEab } from './acme/account.ts'
 export type { AcmeDirectory, AcmeAccount, AcmeOrder, AcmeAuthorization, AcmeChallenge } from './acme/types.ts'
 export { AcmeError } from './acme/errors.ts'
 export { CA_SERVERS } from './acme/directory.ts'

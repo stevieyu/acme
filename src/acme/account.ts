@@ -8,6 +8,26 @@ export interface EabCredentials {
   hmacKey: string
 }
 
+// acme.sh L27: _ZERO_EAB_ENDPOINT
+const ZERO_EAB_ENDPOINT = 'https://api.zerossl.com/acme/eab-credentials-email'
+
+// acme.sh L3883-3914: auto-obtain EAB credentials for ZeroSSL when not provided
+export async function _getZeroSslEab(email: string): Promise<EabCredentials> {
+  const resp = await fetch(ZERO_EAB_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `email=${encodeURIComponent(email)}`,
+  })
+  if (!resp.ok) {
+    throw new Error(`Cannot get EAB credentials from ZeroSSL: ${resp.status} ${resp.statusText}`)
+  }
+  const data = await resp.json() as { eab_kid?: string; eab_hmac_key?: string }
+  if (!data.eab_kid || !data.eab_hmac_key) {
+    throw new Error('Cannot resolve EAB credentials from ZeroSSL response')
+  }
+  return { kid: data.eab_kid, hmacKey: data.eab_hmac_key }
+}
+
 // acme.sh L3850: _regAccount() — register ACME account
 export async function _regAccount(
   http: AcmeHttp,

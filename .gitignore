@@ -9,3 +9,6 @@ Thumbs.db
 !.env.example
 coverage/
 .nyc_output/
+
+*.pem
+acme.sh

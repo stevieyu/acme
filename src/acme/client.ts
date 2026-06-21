@@ -6,8 +6,8 @@ import type { DnsProvider } from '../providers/types.ts'
 import { NoncePool } from './nonce.ts'
 import { AcmeHttp } from './http.ts'
 import type { CaName } from './directory.ts'
-import { _initAPI, getDirectoryUrl } from './directory.ts'
-import { _regAccount, _getAccount } from './account.ts'
+import { _initAPI, getDirectoryUrl, CA_SERVERS } from './directory.ts'
+import { _regAccount, _getAccount, _getZeroSslEab } from './account.ts'
 import type { EabCredentials } from './account.ts'
 import {
   _createOrder, _getAuthorization, _getDns01Challenge,
@@ -156,6 +156,15 @@ export class AcmeClient {
     } catch (err) {
       // accountDoesNotExist → fall through to registration
       if (err instanceof AcmeError && err.problem.type === 'urn:ietf:params:acme:error:accountDoesNotExist') {
+        // acme.sh L3883-3914: auto-obtain EAB for ZeroSSL when not provided
+        if (!this.eab && this.ACME_DIRECTORY === CA_SERVERS.zerossl) {
+          const email = this.accountContact?.[0]?.replace(/^mailto:/, '')
+          if (!email) {
+            throw new Error('ZeroSSL requires EAB credentials or an email address to obtain them automatically')
+          }
+          this.logger.info('no EAB credentials provided for ZeroSSL, obtaining automatically')
+          this.eab = await _getZeroSslEab(email)
+        }
         const { kid } = await _regAccount(
           http, this.directory!.newAccount,
           this.accountKeyPair.privateKey, this.accountKeyPair.publicKey,
