@@ -1,6 +1,6 @@
 export { createLogger } from './logger.ts'
 export type { Logger, LogLevel } from './logger.ts'
-export { retry, sleep } from './retry.ts'
+export { retry, _sleep } from './retry.ts'
 export type { RetryOptions } from './retry.ts'
 export { httpFetch, httpFetchJson } from './http.ts'
 export type { HttpOptions } from './http.ts'

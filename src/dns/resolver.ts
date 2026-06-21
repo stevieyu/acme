@@ -1,7 +1,7 @@
 import type { DnsProvider } from '../providers/types.ts'
 import type { Logger } from '../util/logger.ts'
-import { sleep } from '../util/retry.ts'
-import { checkDnsPropagation, purgeDohCache } from './doh.ts'
+import { _sleep } from '../util/retry.ts'
+import { _check_dns_entries, __purge_txt } from './doh.ts'
 
 export interface ResolveDns01Options {
   provider: DnsProvider
@@ -40,17 +40,17 @@ export async function resolveDns01Challenge(options: ResolveDns01Options): Promi
     return
   }
 
-  // acme.sh: "Sleeping for 20 seconds first" before any DNS check
+  // acme.sh L5205: "Sleeping for 20 seconds first" before DNS check
   logger.info(`waiting ${dnsSettleMs / 1000}s for DNS to settle before checking...`)
-  await sleep(dnsSettleMs)
+  await _sleep(dnsSettleMs)
 
-  // Purge DoH caches before polling (acme.sh: __purge_txt before each retry)
-  await purgeDohCache(fulldomain, dohTimeoutMs)
+  // acme.sh L4463: __purge_txt before each retry
+  await __purge_txt(fulldomain, dohTimeoutMs)
 
   const maxAttempts = dohMaxAttempts ?? Math.ceil(propagationTimeoutMs / propagationIntervalMs)
   logger.info(`checking DNS propagation: ${fulldomain} (timeout ${propagationTimeoutMs / 1000}s, interval ${propagationIntervalMs / 1000}s, maxAttempts ${maxAttempts})`)
 
-  const propagated = await checkDnsPropagation(fulldomain, txtValue, {
+  const propagated = await _check_dns_entries(fulldomain, txtValue, {
     intervalMs: propagationIntervalMs,
     maxAttempts,
     dohTimeoutMs,

@@ -1,5 +1,5 @@
-import { base64urlEncode, base64urlDecode } from './digest.ts'
-import { publicKeyToJwk, computeThumbprint } from './jwk.ts'
+import { _url_replace, _durl_replace_base64 } from './digest.ts'
+import { _calcjwk } from './jwk.ts'
 
 export interface JwsInput {
   privateKey: CryptoKey
@@ -13,9 +13,10 @@ export interface FlattenedJws {
   signature: string
 }
 
-export async function signJws(input: JwsInput): Promise<FlattenedJws> {
-  const protectedHeader = base64urlEncode(new TextEncoder().encode(JSON.stringify(input.protectedHeader)))
-  const payload = input.payload === null ? '' : base64urlEncode(new TextEncoder().encode(input.payload))
+// acme.sh L1106: _sign() — sign JWS payload with private key
+export async function _sign(input: JwsInput): Promise<FlattenedJws> {
+  const protectedHeader = _url_replace(new TextEncoder().encode(JSON.stringify(input.protectedHeader)))
+  const payload = input.payload === null ? '' : _url_replace(new TextEncoder().encode(input.payload))
   const signingInput = `${protectedHeader}.${payload}`
 
   const alg = getSignAlgorithm(input.privateKey)
@@ -30,18 +31,19 @@ export async function signJws(input: JwsInput): Promise<FlattenedJws> {
   return {
     payload,
     protected: protectedHeader,
-    signature: base64urlEncode(sigBytes),
+    signature: _url_replace(sigBytes),
   }
 }
 
-export async function signJwsWithJwkThumbprint(
+// _signWithJwk: sign with JWK in header (for account registration)
+export async function _signWithJwk(
   privateKey: CryptoKey,
   publicKey: CryptoKey,
   payload: string | null,
   url: string,
   nonce: string,
 ): Promise<FlattenedJws> {
-  const jwk = await publicKeyToJwk(publicKey)
+  const jwk = await _calcjwk(publicKey)
   const protectedHeader: Record<string, unknown> = {
     alg: getJwsAlg(privateKey),
     jwk: { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y, e: jwk.e, n: jwk.n },
@@ -54,10 +56,11 @@ export async function signJwsWithJwkThumbprint(
     if (v !== undefined) jwkClean[k] = v
   }
   protectedHeader.jwk = jwkClean
-  return signJws({ privateKey, payload, protectedHeader })
+  return _sign({ privateKey, payload, protectedHeader })
 }
 
-export async function signJwsWithKid(
+// acme.sh L2238: _send_signed_request() uses kid-based signing for authenticated requests
+export async function _signWithKid(
   privateKey: CryptoKey,
   kid: string,
   payload: string | null,
@@ -70,17 +73,17 @@ export async function signJwsWithKid(
     nonce,
     url,
   }
-  return signJws({ privateKey, payload, protectedHeader })
+  return _sign({ privateKey, payload, protectedHeader })
 }
 
-// EAB (External Account Binding) per RFC 8555 §7.3.4
-export async function signEab(
+// acme.sh L3916-3936: _regAccount() EAB signature — External Account Binding per RFC 8555 §7.3.4
+export async function _signEab(
   eabKid: string,
   eabHmacKey: string,
   accountJwk: JsonWebKey,
   url: string,
 ): Promise<FlattenedJws> {
-  const keyBytes = base64urlDecode(eabHmacKey)
+  const keyBytes = _durl_replace_base64(eabHmacKey)
   const cryptoKey = await crypto.subtle.importKey(
     'raw', keyBytes.buffer as ArrayBuffer, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
   )
@@ -90,15 +93,15 @@ export async function signEab(
     ? { crv: accountJwk.crv, kty: 'EC', x: accountJwk.x, y: accountJwk.y }
     : { e: accountJwk.e, kty: 'RSA', n: accountJwk.n }
 
-  const protectedHeader = base64urlEncode(
+  const protectedHeader = _url_replace(
     new TextEncoder().encode(JSON.stringify({ alg: 'HS256', kid: eabKid, url })),
   )
-  const payload = base64urlEncode(new TextEncoder().encode(JSON.stringify(publicJwk)))
+  const payload = _url_replace(new TextEncoder().encode(JSON.stringify(publicJwk)))
   const signingInput = `${protectedHeader}.${payload}`
 
   const signature = await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(signingInput))
 
-  return { payload, protected: protectedHeader, signature: base64urlEncode(signature) }
+  return { payload, protected: protectedHeader, signature: _url_replace(signature) }
 }
 
 function getJwsAlg(key: CryptoKey): string {

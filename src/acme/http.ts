@@ -20,14 +20,16 @@ export class AcmeHttp {
     this.logger = logger
   }
 
-  async fetchNonce(): Promise<string> {
+  // acme.sh L2267-2289: _send_signed_request() nonce fetching logic
+  async _getNonce(): Promise<string> {
     const response = await fetch(this.newNonceUrl, { method: 'HEAD' })
     const nonce = response.headers.get('replay-nonce')
     if (!nonce) throw new AcmeError({ type: 'urn:ietf:params:acme:error:serverInternal', detail: 'No Replay-Nonce in HEAD response' })
     return nonce
   }
 
-  async request<T>(
+  // acme.sh: _post() — raw POST request with JWS body
+  async _post<T>(
     url: string,
     jws: FlattenedJws,
   ): Promise<AcmeHttpResponse<T>> {
@@ -50,10 +52,10 @@ export class AcmeHttp {
       const body = await response.text()
       const error = AcmeError.fromResponse(response.status, body)
 
-      // Retry once on badNonce
+      // Retry once on badNonce (acme.sh L2373-2378: nonce retry logic)
       if (error.problem.type === 'urn:ietf:params:acme:error:badNonce' && attempt === 0) {
         this.logger.warn('badNonce, retrying with fresh nonce')
-        const newNonce = await this.fetchNonce()
+        const newNonce = await this._getNonce()
         this.noncePool.push(newNonce)
         // Caller must re-sign with new nonce - so we need a different approach
         // For simplicity, throw and let caller handle
@@ -65,13 +67,14 @@ export class AcmeHttp {
     throw new AcmeError({ type: 'urn:ietf:params:acme:error:serverInternal', detail: 'Unexpected retry exhaustion' })
   }
 
-  async signedRequest<T>(
+  // acme.sh L2238: _send_signed_request() — sign and send JWS with automatic nonce retry
+  async _send_signed_request<T>(
     url: string,
     buildJws: (nonce: string) => Promise<FlattenedJws>,
   ): Promise<AcmeHttpResponse<T>> {
     // ponytail: single retry on badNonce with re-sign
     for (let attempt = 0; attempt < 2; attempt++) {
-      const nonce = await this.noncePool.pop(() => this.fetchNonce())
+      const nonce = await this.noncePool.pop(() => this._getNonce())
       const jws = await buildJws(nonce)
 
       const response = await fetch(url, {

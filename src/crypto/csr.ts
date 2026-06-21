@@ -1,5 +1,5 @@
 import * as x509 from '@peculiar/x509'
-import { base64urlEncode } from './digest.ts'
+import { _url_replace } from './digest.ts'
 
 export interface CsrOptions {
   privateKey: CryptoKey
@@ -7,7 +7,8 @@ export interface CsrOptions {
   domains: string[]
 }
 
-export async function generateCsr(options: CsrOptions): Promise<string> {
+// acme.sh L1286: _createcsr() — generate Certificate Signing Request
+export async function _createcsr(options: CsrOptions): Promise<string> {
   const { privateKey, publicKey, domains } = options
   const cn = domains[0]!
 
@@ -36,8 +37,9 @@ export function csrToDer(csrPem: string): Uint8Array {
   return Uint8Array.from(atob(base64), c => c.charCodeAt(0))
 }
 
+// acme.sh L5447: der="$(_getfile "${CSR_PATH}" ... | tr -d "\r\n" | _url_replace)"
 export function csrToBase64url(csrPem: string): string {
-  return base64urlEncode(csrToDer(csrPem))
+  return _url_replace(csrToDer(csrPem))
 }
 
 function getSigningAlgorithm(key: CryptoKey): EcdsaParams {

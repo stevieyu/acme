@@ -1,6 +1,6 @@
 import type { DnsProvider, DnsProviderContext, TxtRecordInput } from './types.ts'
 import { DnsProviderError } from '../acme/errors.ts'
-import { base64urlEncode } from '../crypto/digest.ts'
+import { _url_replace } from '../crypto/digest.ts'
 
 export abstract class HmacProviderBase implements DnsProvider {
   abstract readonly id: string
@@ -24,7 +24,7 @@ export abstract class HmacProviderBase implements DnsProvider {
       ['sign'],
     )
     const signature = await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(data))
-    return base64urlEncode(signature)
+    return _url_replace(signature)
   }
 
   protected async hmacSignBase64(

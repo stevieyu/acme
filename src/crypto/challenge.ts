@@ -1,15 +1,17 @@
-import { sha256Base64url } from './digest.ts'
-import { publicKeyToJwkWithThumbprint } from './jwk.ts'
+import { _digestUrlReplace } from './digest.ts'
+import { _calcjwkWithThumbprint } from './jwk.ts'
 
-export async function computeDns01TxtValue(
+// acme.sh L5136: txt="$(printf "%s" "$keyauthorization" | _digest "sha256" | _url_replace)"
+export async function _digestTxt(
   token: string,
   accountPublicKey: CryptoKey,
 ): Promise<string> {
-  const { thumbprint } = await publicKeyToJwkWithThumbprint(accountPublicKey)
-  const keyAuthorization = `${token}.${thumbprint}`
-  return sha256Base64url(keyAuthorization)
+  const { thumbprint } = await _calcjwkWithThumbprint(accountPublicKey)
+  const keyauthorization = `${token}.${thumbprint}`
+  return _digestUrlReplace(keyauthorization)
 }
 
+// acme.sh L5131: txtdomain="_acme-challenge.$_dns_root_d"
 export function challengeDomain(domain: string): string {
   return `_acme-challenge.${domain}`
 }

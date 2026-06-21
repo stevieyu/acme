@@ -1,3 +1,4 @@
+// acme.sh logging functions: _info (L289), _err (L297), _debug (L348), _log (L284)
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent'
 
 export interface Logger {

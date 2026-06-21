@@ -19,13 +19,14 @@ export async function retry<T>(
     } catch (err) {
       lastError = err
       if (attempt === maxRetries) break
-      await sleep(delay)
+      await _sleep(delay)
       delay = Math.min(delay * backoffFactor, maxDelayMs)
     }
   }
   throw lastError
 }
 
-export function sleep(ms: number): Promise<void> {
+// acme.sh: _sleep — sleep for given milliseconds
+export function _sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }

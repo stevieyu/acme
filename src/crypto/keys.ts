@@ -6,7 +6,8 @@ export interface KeyPairResult {
   keyType: KeyType
 }
 
-export async function generateKeyPair(keyType: KeyType = 'ec-256'): Promise<KeyPairResult> {
+// acme.sh L1178: _createkey() — generate RSA/EC key pair
+export async function _createkey(keyType: KeyType = 'ec-256'): Promise<KeyPairResult> {
   const algorithm = getKeyAlgorithm(keyType)
   const keyPair = await crypto.subtle.generateKey(algorithm, true, ['sign', 'verify'])
   return { privateKey: keyPair.privateKey, publicKey: keyPair.publicKey, keyType }

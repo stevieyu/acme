@@ -1,5 +1,5 @@
-import { signJwsWithJwkThumbprint, signJwsWithKid, signEab } from '../crypto/index.ts'
-import { publicKeyToJwk } from '../crypto/jwk.ts'
+import { _signWithJwk, _signWithKid, _signEab } from '../crypto/index.ts'
+import { _calcjwk } from '../crypto/jwk.ts'
 import type { AcmeAccount } from './types.ts'
 import type { AcmeHttp } from './http.ts'
 
@@ -8,9 +8,10 @@ export interface EabCredentials {
   hmacKey: string
 }
 
-export async function registerAccount(
+// acme.sh L3850: _regAccount() — register ACME account
+export async function _regAccount(
   http: AcmeHttp,
-  newAccountUrl: string,
+  ACME_NEW_ACCOUNT: string,
   privateKey: CryptoKey,
   publicKey: CryptoKey,
   contact?: string[],
@@ -20,23 +21,23 @@ export async function registerAccount(
   const payloadObj: Record<string, unknown> = {
     termsOfServiceAgreed,
   }
-  // ponytail: only include contact when non-empty, matching acme.sh behavior
+  // ponytail: only include contact when non-empty, matching acme.sh behavior (L3938-3940)
   if (contact?.length) {
     payloadObj.contact = contact
   }
 
-  // EAB: sign the account JWK with HMAC key and embed as externalAccountBinding
+  // acme.sh L3916-3936: EAB signature computation
   if (eab) {
-    const jwk = await publicKeyToJwk(publicKey)
-    const eabJws = await signEab(eab.kid, eab.hmacKey, jwk, newAccountUrl)
+    const jwk = await _calcjwk(publicKey)
+    const eabJws = await _signEab(eab.kid, eab.hmacKey, jwk, ACME_NEW_ACCOUNT)
     payloadObj.externalAccountBinding = eabJws
   }
 
   const payload = JSON.stringify(payloadObj)
 
-  const response = await http.signedRequest<AcmeAccount>(
-    newAccountUrl,
-    (nonce) => signJwsWithJwkThumbprint(privateKey, publicKey, payload, newAccountUrl, nonce),
+  const response = await http._send_signed_request<AcmeAccount>(
+    ACME_NEW_ACCOUNT,
+    (nonce) => _signWithJwk(privateKey, publicKey, payload, ACME_NEW_ACCOUNT, nonce),
   )
 
   const location = response.headers.get('location')
@@ -48,18 +49,19 @@ export async function registerAccount(
   return { account, kid: location }
 }
 
-export async function getAccount(
+// acme.sh L4738: getAccount logic (onlyReturnExisting lookup in issue())
+export async function _getAccount(
   http: AcmeHttp,
-  newAccountUrl: string,
+  ACME_NEW_ACCOUNT: string,
   privateKey: CryptoKey,
   publicKey: CryptoKey,
 ): Promise<{ account: AcmeAccount; kid: string }> {
   // Find existing account by sending onlyReturnExisting
   const payload = JSON.stringify({ onlyReturnExisting: true })
 
-  const response = await http.signedRequest<AcmeAccount>(
-    newAccountUrl,
-    (nonce) => signJwsWithJwkThumbprint(privateKey, publicKey, payload, newAccountUrl, nonce),
+  const response = await http._send_signed_request<AcmeAccount>(
+    ACME_NEW_ACCOUNT,
+    (nonce) => _signWithJwk(privateKey, publicKey, payload, ACME_NEW_ACCOUNT, nonce),
   )
 
   const location = response.headers.get('location')

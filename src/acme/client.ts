@@ -1,4 +1,4 @@
-import { generateKeyPair, generateCsr, computeDns01TxtValue } from '../crypto/index.ts'
+import { _createkey, _createcsr, _digestTxt } from '../crypto/index.ts'
 import type { KeyType } from '../crypto/keys.ts'
 import { createLogger } from '../util/logger.ts'
 import type { Logger, LogLevel } from '../util/logger.ts'
@@ -6,24 +6,25 @@ import type { DnsProvider } from '../providers/types.ts'
 import { NoncePool } from './nonce.ts'
 import { AcmeHttp } from './http.ts'
 import type { CaName } from './directory.ts'
-import { fetchDirectory, getDirectoryUrl } from './directory.ts'
-import { registerAccount, getAccount } from './account.ts'
+import { _initAPI, getDirectoryUrl } from './directory.ts'
+import { _regAccount, _getAccount } from './account.ts'
 import type { EabCredentials } from './account.ts'
 import {
-  createOrder, getAuthorization, getDns01Challenge,
-  answerChallenge, pollChallenge, finalizeOrder,
-  pollOrder, downloadCertificate,
+  _createOrder, _getAuthorization, _getDns01Challenge,
+  __trigger_validation, _pollAuthzStatus, _finalizeOrder,
+  _pollOrderStatus, _downloadCert,
 } from './order.ts'
 import type { AcmeDirectory, AcmeOrder, AcmeAuthorization, AcmeChallenge } from './types.ts'
 import { AcmeError } from './errors.ts'
-import { checkDnsPropagation, purgeDohCache } from '../dns/doh.ts'
-import { sleep } from '../util/retry.ts'
+import { _check_dns_entries, __purge_txt } from '../dns/doh.ts'
+import { _sleep } from '../util/retry.ts'
 
+// acme.sh L29-30: CA_SSLCOM_RSA / CA_SSLCOM_ECC
 // ponytail: acme.sh auto-switches SSL.com RSA→ECC endpoint when key type is ECC
-const SSLCOM_RSA = 'https://acme.ssl.com/sslcom-dv-rsa'
-const SSLCOM_ECC = 'https://acme.ssl.com/sslcom-dv-ecc'
+const CA_SSLCOM_RSA = 'https://acme.ssl.com/sslcom-dv-rsa'
+const CA_SSLCOM_ECC = 'https://acme.ssl.com/sslcom-dv-ecc'
 
-// ponytail: acme.sh sleeps 20s before first DNS check.
+// ponytail: acme.sh sleeps 20s before first DNS check (L5205).
 const INITIAL_SETTLE_MS = 20_000
 
 export interface AcmeClientOptions {
@@ -51,15 +52,17 @@ export interface IssueCertificateOptions {
   dohMaxAttempts?: number
 }
 
-export interface CertificateResult {
+// acme.sh L4604: issue() result
+export interface IssueResult {
   fullchain: string
   privateKey: string
   certificate: string
 }
 
+// acme.sh L4604: issue() — main certificate issuance flow
 export class AcmeClient {
   private logger: Logger
-  private directoryUrl: string
+  private ACME_DIRECTORY: string
   private accountContact?: string[]
   private accountKeyPair?: CryptoKeyPair
   private eab?: EabCredentials
@@ -67,11 +70,11 @@ export class AcmeClient {
   private directory?: AcmeDirectory
   private http?: AcmeHttp
   private noncePool?: NoncePool
-  private kid?: string
+  private ACCOUNT_URL?: string
 
   constructor(options: AcmeClientOptions) {
     this.logger = createLogger(options.logger ?? 'info')
-    this.directoryUrl = getDirectoryUrl(options.directoryUrl)
+    this.ACME_DIRECTORY = getDirectoryUrl(options.directoryUrl)
     this.accountContact = options.accountContact
     this.eab = options.eab
     this.termsOfServiceAgreed = options.termsOfServiceAgreed ?? true
@@ -80,63 +83,66 @@ export class AcmeClient {
     }
   }
 
-  private async ensureDirectory(): Promise<AcmeDirectory> {
+  // acme.sh L2878: _initAPI() — fetch ACME directory
+  private async _initAPI(): Promise<AcmeDirectory> {
     if (!this.directory) {
-      this.directory = await fetchDirectory(this.directoryUrl)
-      this.logger.info('fetched ACME directory', this.directoryUrl)
+      this.directory = await _initAPI(this.ACME_DIRECTORY)
+      this.logger.info('fetched ACME directory', this.ACME_DIRECTORY)
     }
     return this.directory
   }
 
-  private async ensureHttp(): Promise<AcmeHttp> {
+  private async _ensureHttp(): Promise<AcmeHttp> {
     if (!this.http) {
-      const dir = await this.ensureDirectory()
+      const dir = await this._initAPI()
       this.noncePool = new NoncePool(this.logger)
       this.http = new AcmeHttp(this.noncePool, dir.newNonce, this.logger)
     }
     return this.http
   }
 
-  private async ensureAccount(): Promise<{ privateKey: CryptoKey; publicKey: CryptoKey; kid: string }> {
-    if (this.kid && this.accountKeyPair) {
+  // acme.sh L4738: account lookup / _regAccount logic in issue()
+  private async _ensureAccount(): Promise<{ privateKey: CryptoKey; publicKey: CryptoKey; kid: string }> {
+    if (this.ACCOUNT_URL && this.accountKeyPair) {
       return {
         privateKey: this.accountKeyPair.privateKey,
         publicKey: this.accountKeyPair.publicKey,
-        kid: this.kid,
+        kid: this.ACCOUNT_URL,
       }
     }
 
-    const http = await this.ensureHttp()
+    const http = await this._ensureHttp()
 
     if (!this.accountKeyPair) {
-      const kp = await generateKeyPair('ec-256')
+      const kp = await _createkey('ec-256')
       this.accountKeyPair = { privateKey: kp.privateKey, publicKey: kp.publicKey }
     }
 
     // Try to find existing account first
     try {
-      const { kid } = await getAccount(http, this.directory!.newAccount, this.accountKeyPair.privateKey, this.accountKeyPair.publicKey)
-      this.kid = kid
+      const { kid } = await _getAccount(http, this.directory!.newAccount, this.accountKeyPair.privateKey, this.accountKeyPair.publicKey)
+      this.ACCOUNT_URL = kid
       this.logger.info('found existing account', kid)
     } catch {
-      // Register new account
-      const { kid } = await registerAccount(
+      // acme.sh L3850: _regAccount — register new account
+      const { kid } = await _regAccount(
         http, this.directory!.newAccount,
         this.accountKeyPair.privateKey, this.accountKeyPair.publicKey,
         this.accountContact, this.termsOfServiceAgreed, this.eab,
       )
-      this.kid = kid
+      this.ACCOUNT_URL = kid
       this.logger.info('registered new account', kid)
     }
 
     return {
       privateKey: this.accountKeyPair.privateKey,
       publicKey: this.accountKeyPair.publicKey,
-      kid: this.kid!,
+      kid: this.ACCOUNT_URL!,
     }
   }
 
-  async issueCertificate(options: IssueCertificateOptions): Promise<CertificateResult> {
+  // acme.sh L4604: issue() — main certificate issuance entry point
+  async issue(options: IssueCertificateOptions): Promise<IssueResult> {
     const {
       domains, keyType = 'ec-256', dns,
       propagationTimeoutMs = 600_000,
@@ -147,108 +153,110 @@ export class AcmeClient {
     } = options
 
     // ponytail: acme.sh auto-switches SSL.com RSA→ECC endpoint for EC key types
-    if (keyType.startsWith('ec') && this.directoryUrl === SSLCOM_RSA) {
+    if (keyType.startsWith('ec') && this.ACME_DIRECTORY === CA_SSLCOM_RSA) {
       this.logger.info('switching SSL.com endpoint from RSA to ECC for EC key type')
-      this.directoryUrl = SSLCOM_ECC
+      this.ACME_DIRECTORY = CA_SSLCOM_ECC
       this.directory = undefined
       this.http = undefined
       this.noncePool = undefined
-      this.kid = undefined
+      this.ACCOUNT_URL = undefined
     }
 
-    const http = await this.ensureHttp()
-    const dir = await this.ensureDirectory()
-    const account = await this.ensureAccount()
+    const http = await this._ensureHttp()
+    const dir = await this._initAPI()
+    const account = await this._ensureAccount()
 
     this.logger.info(`issuing certificate for ${domains.join(', ')}`)
 
-    // 1. Create order
-    const order = await createOrder(http, dir.newOrder, account.privateKey, account.kid, domains)
+    // acme.sh L4888: STEP 1 — create order
+    const order = await _createOrder(http, dir.newOrder, account.privateKey, account.kid, domains)
     this.logger.info(`order created, status: ${order.status}`)
 
-    // 2. Process each authorization
+    // acme.sh L4940: STEP 2 — get authorizations
     for (const authzUrl of order.authorizations) {
-      const authz = await getAuthorization(http, authzUrl, account.privateKey, account.kid)
-      const challenge = await getDns01Challenge(authz)
+      const authz = await _getAuthorization(http, authzUrl, account.privateKey, account.kid)
+      const challenge = await _getDns01Challenge(authz)
 
       if (challenge.status === 'valid') {
         this.logger.info(`authz for ${authz.identifier.value} already valid`)
         continue
       }
 
-      // Compute TXT value
-      const txtValue = await computeDns01TxtValue(challenge.token, account.publicKey)
-      const domain = authz.wildcard
-        ? `*.${authz.identifier.value}`
-        : authz.identifier.value
-      const fulldomain = `_acme-challenge.${authz.identifier.value}`
+      // acme.sh L5136: txt="$(printf "%s" "$keyauthorization" | _digest "sha256" | _url_replace)"
+      const txt = await _digestTxt(challenge.token, account.publicKey)
+      // acme.sh L5131: txtdomain="_acme-challenge.$_dns_root_d"
+      const _dns_root_d = authz.identifier.value
+      const domain = authz.wildcard ? `*._dns_root_d` : _dns_root_d
+      const txtdomain = `_acme-challenge.${_dns_root_d}`
 
-      this.logger.info(`creating DNS TXT record: ${fulldomain} = ${txtValue}`)
+      this.logger.info(`creating DNS TXT record: ${txtdomain} = ${txt}`)
 
-      // Create TXT record
       try {
+        // acme.sh L5170: addcommand "$txtdomain" "$txt"
         await dns.createTxtRecord(
           { logger: this.logger },
-          { fulldomain, txtvalue: txtValue },
+          { fulldomain: txtdomain, txtvalue: txt },
         )
 
-        // Wait for DNS propagation before answering challenge (acme.sh: _check_dns_entries)
+        // acme.sh L5205: "Sleeping for 20 seconds first" before DNS check
         this.logger.info(`waiting ${dnsSettleMs / 1000}s for DNS to settle before checking...`)
-        await sleep(dnsSettleMs)
-        await purgeDohCache(fulldomain, dohTimeoutMs)
+        await _sleep(dnsSettleMs)
+        await __purge_txt(txtdomain, dohTimeoutMs)
         const maxAttempts = dohMaxAttempts ?? Math.ceil(propagationTimeoutMs / propagationIntervalMs)
-        this.logger.info(`checking DNS propagation: ${fulldomain} (timeout ${propagationTimeoutMs / 1000}s, interval ${propagationIntervalMs / 1000}s, maxAttempts ${maxAttempts})`)
-        const propagated = await checkDnsPropagation(fulldomain, txtValue, {
+        this.logger.info(`checking DNS propagation: ${txtdomain} (timeout ${propagationTimeoutMs / 1000}s, interval ${propagationIntervalMs / 1000}s, maxAttempts ${maxAttempts})`)
+        const propagated = await _check_dns_entries(txtdomain, txt, {
           intervalMs: propagationIntervalMs,
           maxAttempts,
           dohTimeoutMs,
           logger: this.logger,
         })
         if (!propagated) {
-          this.logger.warn(`DNS propagation timeout after ${propagationTimeoutMs / 1000}s for ${fulldomain}, proceeding anyway`)
+          this.logger.warn(`DNS propagation timeout after ${propagationTimeoutMs / 1000}s for ${txtdomain}, proceeding anyway`)
         } else {
-          this.logger.info(`DNS propagation confirmed for ${fulldomain}`)
+          this.logger.info(`DNS propagation confirmed for ${txtdomain}`)
         }
 
-        // Answer challenge
-        await answerChallenge(http, challenge.url, account.privateKey, account.kid)
+        // acme.sh L4254: __trigger_validation
+        await __trigger_validation(http, challenge.url, account.privateKey, account.kid)
         this.logger.info(`challenge answered for ${domain}`)
 
-        // Poll for validation
-        await pollChallenge(http, challenge.url, account.privateKey, account.kid, { timeoutMs: 120000, intervalMs: 2000 })
+        // acme.sh L5352: poll authz status
+        await _pollAuthzStatus(http, challenge.url, account.privateKey, account.kid, { timeoutMs: 120000, intervalMs: 2000 })
         this.logger.info(`challenge validated for ${domain}`)
       } finally {
         // Cleanup TXT record
         try {
           await dns.deleteTxtRecord(
             { logger: this.logger },
-            { fulldomain, txtvalue: txtValue },
+            { fulldomain: txtdomain, txtvalue: txt },
           )
-          this.logger.info(`cleaned up DNS TXT record: ${fulldomain}`)
+          this.logger.info(`cleaned up DNS TXT record: ${txtdomain}`)
         } catch (err) {
-          this.logger.warn(`failed to cleanup DNS TXT record: ${fulldomain}`, err)
+          this.logger.warn(`failed to cleanup DNS TXT record: ${txtdomain}`, err)
         }
       }
     }
 
-    // 3. Generate CSR and finalize
-    const certKeyPair = await generateKeyPair(keyType)
-    const csrPem = await generateCsr({
-      privateKey: certKeyPair.privateKey,
-      publicKey: certKeyPair.publicKey,
+    // acme.sh L1591: createDomainKey — generate domain key
+    const domainKey = await _createkey(keyType)
+    // acme.sh L1286: _createcsr — generate CSR
+    const der = await _createcsr({
+      privateKey: domainKey.privateKey,
+      publicKey: domainKey.publicKey,
       domains,
     })
 
+    // acme.sh L5451: finalize order with CSR
     this.logger.info('finalizing order with CSR')
-    let finalizedOrder = await finalizeOrder(http, order.finalize, account.privateKey, account.kid, csrPem)
+    let finalizedOrder = await _finalizeOrder(http, order.finalize, account.privateKey, account.kid, der)
     this.logger.info(`order status after finalize: ${finalizedOrder.status}`)
 
-    // 4. Poll for certificate if still processing
+    // acme.sh L5470-5523: poll order status if still processing
     // ponytail: finalize response may already contain valid status + certificate URL
     if (finalizedOrder.status === 'processing') {
-      const orderUrl = order.finalize.replace(/\/finalize\/?$/, '')
+      const Le_LinkOrder = order.finalize.replace(/\/finalize\/?$/, '')
       this.logger.info('order is processing, polling for completion...')
-      finalizedOrder = await pollOrder(http, orderUrl, account.privateKey, account.kid, {
+      finalizedOrder = await _pollOrderStatus(http, Le_LinkOrder, account.privateKey, account.kid, {
         timeoutMs: 120_000, intervalMs: 2000,
       })
     }
@@ -257,15 +265,16 @@ export class AcmeClient {
       throw new AcmeError({ type: 'about:blank', detail: `Order ended with status "${finalizedOrder.status}", no certificate URL` })
     }
 
-    // 5. Download certificate
-    const fullchain = await downloadCertificate(http, finalizedOrder.certificate, account.privateKey, account.kid)
+    // acme.sh L5538: download cert
+    const fullchain = await _downloadCert(http, finalizedOrder.certificate, account.privateKey, account.kid)
 
     // Export private key as PEM
-    const pkcs8 = await crypto.subtle.exportKey('pkcs8', certKeyPair.privateKey)
+    const pkcs8 = await crypto.subtle.exportKey('pkcs8', domainKey.privateKey)
     const privateKeyPem = toPem(pkcs8, 'PRIVATE KEY')
 
     this.logger.info('certificate issued successfully')
 
+    // acme.sh L5760: _split_cert_chain — extract first cert from fullchain
     return {
       fullchain,
       privateKey: privateKeyPem,
@@ -274,47 +283,47 @@ export class AcmeClient {
   }
 
   // Step-by-step API for advanced usage
-  async createOrderStep(domains: string[]): Promise<AcmeOrder> {
-    const http = await this.ensureHttp()
-    const dir = await this.ensureDirectory()
-    const account = await this.ensureAccount()
-    return createOrder(http, dir.newOrder, account.privateKey, account.kid, domains)
+  async _createOrder(domains: string[]): Promise<AcmeOrder> {
+    const http = await this._ensureHttp()
+    const dir = await this._initAPI()
+    const account = await this._ensureAccount()
+    return _createOrder(http, dir.newOrder, account.privateKey, account.kid, domains)
   }
 
-  async getAuthorizationStep(authzUrl: string): Promise<AcmeAuthorization> {
-    const http = await this.ensureHttp()
-    const account = await this.ensureAccount()
-    return getAuthorization(http, authzUrl, account.privateKey, account.kid)
+  async _getAuthorization(authzUrl: string): Promise<AcmeAuthorization> {
+    const http = await this._ensureHttp()
+    const account = await this._ensureAccount()
+    return _getAuthorization(http, authzUrl, account.privateKey, account.kid)
   }
 
-  async answerDns01ChallengeStep(dns: DnsProvider, authz: AcmeAuthorization): Promise<AcmeChallenge> {
-    const http = await this.ensureHttp()
-    const account = await this.ensureAccount()
-    const challenge = await getDns01Challenge(authz)
-    const txtValue = await computeDns01TxtValue(challenge.token, account.publicKey)
-    const fulldomain = `_acme-challenge.${authz.identifier.value}`
+  async __trigger_validation(dns: DnsProvider, authz: AcmeAuthorization): Promise<AcmeChallenge> {
+    const http = await this._ensureHttp()
+    const account = await this._ensureAccount()
+    const challenge = await _getDns01Challenge(authz)
+    const txt = await _digestTxt(challenge.token, account.publicKey)
+    const txtdomain = `_acme-challenge.${authz.identifier.value}`
 
-    await dns.createTxtRecord({ logger: this.logger }, { fulldomain, txtvalue: txtValue })
-    const result = await answerChallenge(http, challenge.url, account.privateKey, account.kid)
+    await dns.createTxtRecord({ logger: this.logger }, { fulldomain: txtdomain, txtvalue: txt })
+    const result = await __trigger_validation(http, challenge.url, account.privateKey, account.kid)
     return result
   }
 
-  async pollChallengeStep(challengeUrl: string): Promise<AcmeChallenge> {
-    const http = await this.ensureHttp()
-    const account = await this.ensureAccount()
-    return pollChallenge(http, challengeUrl, account.privateKey, account.kid)
+  async _pollAuthzStatus(challengeUrl: string): Promise<AcmeChallenge> {
+    const http = await this._ensureHttp()
+    const account = await this._ensureAccount()
+    return _pollAuthzStatus(http, challengeUrl, account.privateKey, account.kid)
   }
 
-  async finalizeOrderStep(order: AcmeOrder, csrPem: string): Promise<AcmeOrder> {
-    const http = await this.ensureHttp()
-    const account = await this.ensureAccount()
-    return finalizeOrder(http, order.finalize, account.privateKey, account.kid, csrPem)
+  async _finalizeOrder(order: AcmeOrder, csrPem: string): Promise<AcmeOrder> {
+    const http = await this._ensureHttp()
+    const account = await this._ensureAccount()
+    return _finalizeOrder(http, order.finalize, account.privateKey, account.kid, csrPem)
   }
 
-  async downloadCertificateStep(certificateUrl: string): Promise<string> {
-    const http = await this.ensureHttp()
-    const account = await this.ensureAccount()
-    return downloadCertificate(http, certificateUrl, account.privateKey, account.kid)
+  async _downloadCert(Le_LinkCert: string): Promise<string> {
+    const http = await this._ensureHttp()
+    const account = await this._ensureAccount()
+    return _downloadCert(http, Le_LinkCert, account.privateKey, account.kid)
   }
 }
 

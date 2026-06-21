@@ -1,6 +1,6 @@
 import type { DnsProvider, DnsProviderContext, TxtRecordInput } from './types.ts'
 import { DnsProviderError } from '../acme/errors.ts'
-import { base64urlEncode } from '../crypto/digest.ts'
+import { _url_replace } from '../crypto/digest.ts'
 
 export interface AwsOptions {
   accessKeyId: string
