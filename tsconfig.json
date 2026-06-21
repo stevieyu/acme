@@ -1,20 +1,40 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "target": "esnext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "strict": true,
     "isolatedDeclarations": true,
     "allowImportingTsExtensions": true,
+    "forceConsistentCasingInFileNames": true,
+    "erasableSyntaxOnly": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+
+    // 禁止未使用的局部变量和参数，保持代码整洁
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    
     "declaration": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"],
-    "lib": ["ES2022", "DOM"]
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ESNext",
+      "DOM"
+    ]
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "test"]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test"
+  ]
 }
