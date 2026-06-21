@@ -22,8 +22,9 @@ export async function _regAccount(
     termsOfServiceAgreed,
   }
   // ponytail: only include contact when non-empty, matching acme.sh behavior (L3938-3940)
+  // auto-prefix mailto: so callers can pass plain emails
   if (contact?.length) {
-    payloadObj.contact = contact
+    payloadObj.contact = contact.map(c => c.includes(':') ? c : `mailto:${c}`)
   }
 
   // acme.sh L3916-3936: EAB signature computation
