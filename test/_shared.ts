@@ -1,4 +1,4 @@
-import type { DnsProviderContext } from '../src/providers/types.ts'
+import type { DnsProviderContext } from '../src/dnsapi/types.ts'
 
 export interface MockRoute {
   [key: string]: unknown

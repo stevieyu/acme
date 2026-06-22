@@ -2,7 +2,7 @@ import { _createkey, _createcsr, _digestTxt } from '../crypto/index.ts'
 import type { KeyType } from '../crypto/keys.ts'
 import { createLogger } from '../util/logger.ts'
 import type { Logger, LogLevel } from '../util/logger.ts'
-import type { DnsProvider } from '../providers/types.ts'
+import type { DnsProvider } from '../dnsapi/types.ts'
 import { NoncePool } from './nonce.ts'
 import { AcmeHttp } from './http.ts'
 import type { CaName } from './directory.ts'
@@ -195,6 +195,8 @@ export class AcmeClient {
       dohMaxAttempts,
     } = options
 
+    dns.setContext({ logger: this.logger })
+
     // ponytail: acme.sh auto-switches SSL.com RSA→ECC endpoint for EC key types
     if (keyType.startsWith('ec') && this.ACME_DIRECTORY === CA_SSLCOM_RSA) {
       this.logger.info('switching SSL.com endpoint from RSA to ECC for EC key type')
@@ -236,10 +238,7 @@ export class AcmeClient {
 
       try {
         // acme.sh L5170: addcommand "$txtdomain" "$txt"
-        await dns.createTxtRecord(
-          { logger: this.logger },
-          { fulldomain: txtdomain, txtvalue: txt },
-        )
+        await dns.createTxtRecord({ fulldomain: txtdomain, txtvalue: txt })
 
         // acme.sh L5205: "Sleeping for 20 seconds first" before DNS check
         this.logger.info(`waiting ${dnsSettleMs / 1000}s for DNS to settle before checking...`)
@@ -269,10 +268,7 @@ export class AcmeClient {
       } finally {
         // Cleanup TXT record
         try {
-          await dns.deleteTxtRecord(
-            { logger: this.logger },
-            { fulldomain: txtdomain, txtvalue: txt },
-          )
+          await dns.deleteTxtRecord({ fulldomain: txtdomain, txtvalue: txt })
           this.logger.info(`cleaned up DNS TXT record: ${txtdomain}`)
         } catch (err) {
           this.logger.warn(`failed to cleanup DNS TXT record: ${txtdomain}`, err)
@@ -346,7 +342,8 @@ export class AcmeClient {
     const txt = await _digestTxt(challenge.token, account.publicKey)
     const txtdomain = `_acme-challenge.${authz.identifier.value}`
 
-    await dns.createTxtRecord({ logger: this.logger }, { fulldomain: txtdomain, txtvalue: txt })
+    dns.setContext({ logger: this.logger })
+    await dns.createTxtRecord({ fulldomain: txtdomain, txtvalue: txt })
     const result = await __trigger_validation(http, challenge.url, account.privateKey, account.kid)
     return result
   }

@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { HetznerProvider } from '../../src/providers/hetzner.ts'
+import { HetznerProvider } from '../../src/dnsapi/dns_hetzner.ts'
 import { mockFetch, ctx as mkCtx, installMockFetch } from '../_shared.ts'
 
 describe('Hetzner provider', () => {
@@ -24,11 +24,13 @@ describe('Hetzner provider', () => {
 
   it('creates TXT record', async () => {
     const p = new HetznerProvider({ token: 'test-token' })
-    await p.createTxtRecord(mkCtx(), { fulldomain: '_acme-challenge.example.com', txtvalue: 'new-value' })
+    p.setContext(mkCtx())
+    await p.createTxtRecord({ fulldomain: '_acme-challenge.example.com', txtvalue: 'new-value' })
   })
 
   it('deletes TXT record', async () => {
     const p = new HetznerProvider({ token: 'test-token' })
-    await p.deleteTxtRecord(mkCtx(), { fulldomain: '_acme-challenge.example.com', txtvalue: 'test-value' })
+    p.setContext(mkCtx())
+    await p.deleteTxtRecord({ fulldomain: '_acme-challenge.example.com', txtvalue: 'test-value' })
   })
 })

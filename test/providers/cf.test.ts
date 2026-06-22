@@ -1,6 +1,6 @@
 import { describe, it, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { getProvider } from '../../src/providers/index.ts'
+import { getProvider } from '../../src/dnsapi/index.ts'
 import { mockFetch, ctx, installMockFetch } from '../_shared.ts'
 
 describe('Cloudflare provider', () => {
@@ -22,7 +22,8 @@ describe('Cloudflare provider', () => {
     restore = installMockFetch(http)
 
     const cf = getProvider('cf', { token: 'test-token' })
-    await cf.createTxtRecord(ctx(), {
+    cf.setContext(ctx())
+    await cf.createTxtRecord({
       fulldomain: '_acme-challenge.example.com',
       txtvalue: 'CHALLENGE_VALUE',
     })
@@ -43,7 +44,8 @@ describe('Cloudflare provider', () => {
     restore = installMockFetch(http)
 
     const cf = getProvider('cf', { token: 'test-token' })
-    await cf.createTxtRecord(ctx(), {
+    cf.setContext(ctx())
+    await cf.createTxtRecord({
       fulldomain: '_acme-challenge.example.com',
       txtvalue: 'EXISTING',
     })
@@ -63,7 +65,8 @@ describe('Cloudflare provider', () => {
     restore = installMockFetch(http)
 
     const cf = getProvider('cf', { token: 'test-token' })
-    await cf.deleteTxtRecord(ctx(), {
+    cf.setContext(ctx())
+    await cf.deleteTxtRecord({
       fulldomain: '_acme-challenge.example.com',
       txtvalue: 'NOT_EXISTING',
     })

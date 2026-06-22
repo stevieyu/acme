@@ -1,11 +1,11 @@
 import { describe, it, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { getProvider } from '../../src/providers/index.ts'
+import { getProvider } from '../../src/dnsapi/index.ts'
 import { mockFetch, ctx as mkCtx, installMockFetch } from '../_shared.ts'
-import { CloudflareProvider } from '../../src/providers/cf.ts'
-import { VultrProvider } from '../../src/providers/batch-http.ts'
-import { TencentProvider } from '../../src/providers/batch-hmac.ts'
-import { PorkbunProvider } from '../../src/providers/batch-c.ts'
+import { CloudflareProvider } from '../../src/dnsapi/dns_cf.ts'
+import { VultrProvider } from '../../src/dnsapi/dns_vultr.ts'
+import { TencentProvider } from '../../src/dnsapi/dns_tencent.ts'
+import { PorkbunProvider } from '../../src/dnsapi/dns_porkbun.ts'
 
 describe('getProvider registry', () => {
   it('creates cf provider', () => {
@@ -63,12 +63,14 @@ describe('Vultr provider', () => {
 
   it('creates TXT record', async () => {
     const p = new VultrProvider({ token: 'tok' })
-    await p.createTxtRecord(mkCtx(), { fulldomain: '_acme-challenge.example.com', txtvalue: 'val' })
+    p.setContext(mkCtx())
+    await p.createTxtRecord({ fulldomain: '_acme-challenge.example.com', txtvalue: 'val' })
   })
 
   it('deletes TXT record', async () => {
     const p = new VultrProvider({ token: 'tok' })
-    await p.deleteTxtRecord(mkCtx(), { fulldomain: '_acme-challenge.example.com', txtvalue: 'val' })
+    p.setContext(mkCtx())
+    await p.deleteTxtRecord({ fulldomain: '_acme-challenge.example.com', txtvalue: 'val' })
   })
 })
 
@@ -90,7 +92,8 @@ describe('Tencent provider', () => {
 
   it('creates TXT record', async () => {
     const p = new TencentProvider({ secretId: 'id', secretKey: 'key' })
-    await p.createTxtRecord(mkCtx(), { fulldomain: '_acme-challenge.example.com', txtvalue: 'val' })
+    p.setContext(mkCtx())
+    await p.createTxtRecord({ fulldomain: '_acme-challenge.example.com', txtvalue: 'val' })
   })
 })
 
@@ -114,11 +117,13 @@ describe('Porkbun provider', () => {
 
   it('creates TXT record', async () => {
     const p = new PorkbunProvider({ apiKey: 'k', secretKey: 's' })
-    await p.createTxtRecord(mkCtx(), { fulldomain: '_acme-challenge.example.com', txtvalue: 'val' })
+    p.setContext(mkCtx())
+    await p.createTxtRecord({ fulldomain: '_acme-challenge.example.com', txtvalue: 'val' })
   })
 
   it('deletes TXT record', async () => {
     const p = new PorkbunProvider({ apiKey: 'k', secretKey: 's' })
-    await p.deleteTxtRecord(mkCtx(), { fulldomain: '_acme-challenge.example.com', txtvalue: 'val' })
+    p.setContext(mkCtx())
+    await p.deleteTxtRecord({ fulldomain: '_acme-challenge.example.com', txtvalue: 'val' })
   })
 })

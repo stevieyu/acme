@@ -1,4 +1,4 @@
-import type { DnsProvider } from '../providers/types.ts'
+import type { DnsProvider } from '../dnsapi/types.ts'
 import type { Logger } from '../util/logger.ts'
 import { _sleep } from '../util/retry.ts'
 import { _check_dns_entries, __purge_txt } from './doh.ts'
@@ -33,7 +33,8 @@ export async function resolveDns01Challenge(options: ResolveDns01Options): Promi
   const fulldomain = `_acme-challenge.${domain}`
 
   logger.info(`creating TXT record: ${fulldomain}`)
-  await provider.createTxtRecord({ logger }, { fulldomain, txtvalue: txtValue })
+  provider.setContext({ logger })
+  await provider.createTxtRecord({ fulldomain, txtvalue: txtValue })
 
   if (skipPropagation) {
     logger.info('skipping DNS propagation check')
@@ -74,7 +75,8 @@ export async function cleanupDns01(options: {
   const fulldomain = `_acme-challenge.${domain}`
 
   try {
-    await provider.deleteTxtRecord({ logger }, { fulldomain, txtvalue: txtValue })
+    provider.setContext({ logger })
+    await provider.deleteTxtRecord({ fulldomain, txtvalue: txtValue })
     logger.info(`cleaned up TXT record: ${fulldomain}`)
   } catch (err) {
     logger.warn(`failed to cleanup TXT record: ${fulldomain}`, err)
