@@ -6,11 +6,11 @@ import { split2 } from './_util.ts'
 export interface GcloudOptions { projectId: string; serviceAccountKey: string }
 export class GcloudProvider extends HttpProviderBase {
   readonly id = 'gcloud'; readonly name = 'Google Cloud DNS'
-  private readonly projectId: string; private readonly saKey: string; private accessToken = ''
+  private readonly projectId: string; private accessToken = ''
   constructor(o: GcloudOptions) {
     super('https://dns.googleapis.com/dns/v1')
     if (!o.projectId || !o.serviceAccountKey) throw new DnsProviderError('projectId and serviceAccountKey required', 'gcloud')
-    this.projectId = o.projectId; this.saKey = o.serviceAccountKey
+    this.projectId = o.projectId
   }
   protected buildAuthHeaders(): Record<string, string> { return { 'Authorization': `Bearer ${this.accessToken}` } }
   async createTxtRecord(r: TxtRecordInput): Promise<void> {

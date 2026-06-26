@@ -6,11 +6,11 @@ import { split2 } from './_util.ts'
 export interface QiniuOptions { accessKey: string; secretKey: string }
 export class QiniuProvider extends HttpProviderBase {
   readonly id = 'qiniu'; readonly name = 'Qiniu DNS'
-  private readonly accessKey: string; private readonly secretKey: string
+  private readonly accessKey: string
   constructor(o: QiniuOptions) {
     super('https://api.qiniu.com')
     if (!o.accessKey || !o.secretKey) throw new DnsProviderError('accessKey and secretKey required', 'qiniu')
-    this.accessKey = o.accessKey; this.secretKey = o.secretKey
+    this.accessKey = o.accessKey
   }
   protected buildAuthHeaders(): Record<string, string> { return { 'Authorization': `UpToken ${this.accessKey}` } }
   async createTxtRecord(r: TxtRecordInput): Promise<void> {

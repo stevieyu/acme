@@ -12,8 +12,8 @@
     "noImplicitAny": true,
 
     // 禁止未使用的局部变量和参数，保持代码整洁
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     
     "declaration": true,
     "esModuleInterop": true,

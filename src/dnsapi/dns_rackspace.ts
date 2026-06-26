@@ -24,7 +24,7 @@ export class RackspaceProvider extends HttpProviderBase {
   }
   async createTxtRecord(r: TxtRecordInput): Promise<void> {
     await this.auth()
-    const { domain, sub } = split2(r.fulldomain)
+    const { domain } = split2(r.fulldomain)
     const zoneId = await this.findZoneId(domain)
     await this.request('POST', `${this.baseUrl}/${zoneId}/records`, { records: [{ name: r.fulldomain, type: 'TXT', data: r.txtvalue, ttl: 300 }] })
   }

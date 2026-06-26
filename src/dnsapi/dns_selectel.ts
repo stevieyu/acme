@@ -14,7 +14,7 @@ export class SelectelProvider extends HttpProviderBase {
   }
   protected buildAuthHeaders(): Record<string, string> { return { 'X-Token': this.token } }
   async createTxtRecord(r: TxtRecordInput): Promise<void> {
-    const { domain, sub } = split2(r.fulldomain)
+    const { domain } = split2(r.fulldomain)
     const zoneId = await this.findZoneId(domain)
     await this.request('POST', `${this.baseUrl}/${zoneId}/records/`, { name: r.fulldomain, type: 'TXT', content: r.txtvalue, ttl: 300 })
   }

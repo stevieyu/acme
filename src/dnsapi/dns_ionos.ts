@@ -1,7 +1,6 @@
 import { HttpProviderBase } from './base-http.ts'
 import type { TxtRecordInput } from './types.ts'
 import { DnsProviderError } from '../acme/errors.ts'
-import { split2 } from './_util.ts'
 
 export interface IonosOptions { apiKey: string }
 export class IonosProvider extends HttpProviderBase {
@@ -15,7 +14,6 @@ export class IonosProvider extends HttpProviderBase {
   protected buildAuthHeaders(): Record<string, string> { return { 'X-API-Key': this.apiKey } }
   async createTxtRecord(r: TxtRecordInput): Promise<void> {
     const zoneId = await this.findZoneId(r.fulldomain)
-    const { domain } = split2(r.fulldomain)
     await this.request('POST', `${this.baseUrl}/v1/zones/${zoneId}/records`, { type: 'TXT', name: r.fulldomain, content: r.txtvalue, ttl: 300, disabled: false })
   }
   async deleteTxtRecord(r: TxtRecordInput): Promise<void> {

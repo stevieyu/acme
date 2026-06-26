@@ -16,7 +16,7 @@ export class HeProvider extends HttpProviderBase {
     const params = new URLSearchParams({ email: this.user, pass: this.password, account: '', menu: 'edit_zone', Type: 'TXT', hosted_dns_zoneid: '', hosted_dns_recordname: r.fulldomain, hosted_dns_recordcontent: r.txtvalue, ttl: '300' })
     await fetch(this.baseUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() })
   }
-  async deleteTxtRecord(r: TxtRecordInput): Promise<void> {
+  async deleteTxtRecord(_r: TxtRecordInput): Promise<void> {
     try {
       const params = new URLSearchParams({ email: this.user, pass: this.password, menu: 'delete_record', hosted_dns_zoneid: '', record_id: '' })
       await fetch(this.baseUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() })

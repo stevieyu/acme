@@ -7,12 +7,10 @@ export interface MeOptions { apiKey: string; username: string }
 export class MeProvider extends HmacProviderBase {
   readonly id = 'me'; readonly name = 'Dynadot ME'
   private readonly apiKey: string
-  private readonly username: string
   constructor(options: MeOptions) {
     super('https://api.dynadot.com/api3')
     if (!options.apiKey || !options.username) throw new DnsProviderError('apiKey and username required', 'me')
     this.apiKey = options.apiKey
-    this.username = options.username
   }
   protected async buildSignedHeaders(): Promise<Record<string, string>> {
     const ts = Math.floor(Date.now() / 1000).toString()

@@ -5,11 +5,11 @@ import { DnsProviderError } from '../acme/errors.ts'
 export interface HuaweicloudOptions { accessKeyId: string; secretAccessKey: string }
 export class HuaweicloudProvider extends HttpProviderBase {
   readonly id = 'huaweicloud'; readonly name = 'Huawei Cloud DNS'
-  private readonly akId: string; private readonly akSecret: string
+  private readonly akId: string
   constructor(o: HuaweicloudOptions) {
     super('https://dns.myhuaweicloud.com/v2')
     if (!o.accessKeyId || !o.secretAccessKey) throw new DnsProviderError('accessKeyId and secretAccessKey required', 'huaweicloud')
-    this.akId = o.accessKeyId; this.akSecret = o.secretAccessKey
+    this.akId = o.accessKeyId
   }
   protected buildAuthHeaders(): Record<string, string> { return { 'X-Auth-Token': this.akId } }
   async createTxtRecord(r: TxtRecordInput): Promise<void> {

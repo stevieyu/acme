@@ -20,7 +20,7 @@ export class DnsimpleProvider extends HttpProviderBase {
   }
   async deleteTxtRecord(r: TxtRecordInput): Promise<void> {
     try {
-      const { domain, sub } = split2(r.fulldomain)
+      const { domain } = split2(r.fulldomain)
       const accountId = await this.getAccountId()
       const { data } = await this.request<{ data: Array<{ id: number; content: string }> }>('GET', `${this.baseUrl}/${accountId}/zones/${domain}/records`)
       const m = data.data?.find((x: { content: string }) => x.content === r.txtvalue)

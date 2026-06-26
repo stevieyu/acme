@@ -6,11 +6,11 @@ import { split2 } from './_util.ts'
 export interface DnsmadeeasyOptions { apiKey: string; secretKey: string }
 export class DnsmadeeasyProvider extends HttpProviderBase {
   readonly id = 'dnsmadeeasy'; readonly name = 'DNS Made Easy'
-  private readonly apiKey: string; private readonly secretKey: string
+  private readonly apiKey: string
   constructor(o: DnsmadeeasyOptions) {
     super('https://api.dnsmadeeasy.com/V2.0')
     if (!o.apiKey || !o.secretKey) throw new DnsProviderError('apiKey and secretKey required', 'dnsmadeeasy')
-    this.apiKey = o.apiKey; this.secretKey = o.secretKey
+    this.apiKey = o.apiKey
   }
   protected buildAuthHeaders(): Record<string, string> {
     const ts = Date.now().toString()
