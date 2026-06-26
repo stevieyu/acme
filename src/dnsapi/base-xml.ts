@@ -1,7 +1,6 @@
 import { XMLParser, XMLBuilder } from 'fast-xml-parser'
 import type { DnsProvider, DnsProviderContext, TxtRecordInput } from './types.ts'
-import { DnsProviderError } from '../acme/errors.ts'
-
+import { DnsProviderError } from './errors.ts'
 export abstract class XmlProviderBase implements DnsProvider {
   abstract readonly id: string
   abstract readonly name: string

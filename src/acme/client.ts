@@ -1,4 +1,4 @@
-import { _createkey, _createcsr, _digestTxt } from '../crypto/index.ts'
+import { _createkey, _createcsr, _digestTxt, challengeDomain } from '../crypto/index.ts'
 import type { KeyType } from '../crypto/keys.ts'
 import { createLogger } from '../util/logger.ts'
 import type { Logger, LogLevel } from '../util/logger.ts'
@@ -16,8 +16,7 @@ import {
 } from './order.ts'
 import type { AcmeDirectory, AcmeOrder, AcmeAuthorization, AcmeChallenge } from './types.ts'
 import { AcmeError } from './errors.ts'
-import { _check_dns_entries, __purge_txt } from '../dns/doh.ts'
-import { _sleep } from '../util/retry.ts'
+import { resolveDns01Challenge, cleanupDns01 } from '../dns/resolver.ts'
 
 // acme.sh L29-30: CA_SSLCOM_RSA / CA_SSLCOM_ECC
 // ponytail: acme.sh auto-switches SSL.com RSA→ECC endpoint when key type is ECC
@@ -230,33 +229,21 @@ export class AcmeClient {
       // acme.sh L5136: txt="$(printf "%s" "$keyauthorization" | _digest "sha256" | _url_replace)"
       const txt = await _digestTxt(challenge.token, account.publicKey)
       // acme.sh L5131: txtdomain="_acme-challenge.$_dns_root_d"
-      const _dns_root_d = authz.identifier.value
-      const domain = authz.wildcard ? `*._dns_root_d` : _dns_root_d
-      const txtdomain = `_acme-challenge.${_dns_root_d}`
-
-      this.logger.info(`creating DNS TXT record: ${txtdomain} = ${txt}`)
+      const domain = authz.wildcard ? `*.${authz.identifier.value}` : authz.identifier.value
 
       try {
-        // acme.sh L5170: addcommand "$txtdomain" "$txt"
-        await dns.createTxtRecord({ fulldomain: txtdomain, txtvalue: txt })
-
-        // acme.sh L5205: "Sleeping for 20 seconds first" before DNS check
-        this.logger.info(`waiting ${dnsSettleMs / 1000}s for DNS to settle before checking...`)
-        await _sleep(dnsSettleMs)
-        await __purge_txt(txtdomain, dohTimeoutMs)
-        const maxAttempts = dohMaxAttempts ?? Math.ceil(propagationTimeoutMs / propagationIntervalMs)
-        this.logger.info(`checking DNS propagation: ${txtdomain} (timeout ${propagationTimeoutMs / 1000}s, interval ${propagationIntervalMs / 1000}s, maxAttempts ${maxAttempts})`)
-        const propagated = await _check_dns_entries(txtdomain, txt, {
-          intervalMs: propagationIntervalMs,
-          maxAttempts,
-          dohTimeoutMs,
+        // acme.sh L5170-5352: create TXT, wait for DNS propagation (settle + purge + poll)
+        await resolveDns01Challenge({
+          provider: dns,
+          domain: authz.identifier.value,
+          txtValue: txt,
           logger: this.logger,
+          propagationTimeoutMs,
+          propagationIntervalMs,
+          dnsSettleMs,
+          dohTimeoutMs,
+          dohMaxAttempts,
         })
-        if (!propagated) {
-          this.logger.warn(`DNS propagation timeout after ${propagationTimeoutMs / 1000}s for ${txtdomain}, proceeding anyway`)
-        } else {
-          this.logger.info(`DNS propagation confirmed for ${txtdomain}`)
-        }
 
         // acme.sh L4254: __trigger_validation
         await __trigger_validation(http, challenge.url, account.privateKey, account.kid)
@@ -266,13 +253,8 @@ export class AcmeClient {
         await _pollAuthzStatus(http, challenge.url, account.privateKey, account.kid, { timeoutMs: 120000, intervalMs: 2000 })
         this.logger.info(`challenge validated for ${domain}`)
       } finally {
-        // Cleanup TXT record
-        try {
-          await dns.deleteTxtRecord({ fulldomain: txtdomain, txtvalue: txt })
-          this.logger.info(`cleaned up DNS TXT record: ${txtdomain}`)
-        } catch (err) {
-          this.logger.warn(`failed to cleanup DNS TXT record: ${txtdomain}`, err)
-        }
+        // acme.sh L5176: cleanup TXT record
+        await cleanupDns01({ provider: dns, domain: authz.identifier.value, txtValue: txt, logger: this.logger })
       }
     }
 
@@ -340,7 +322,7 @@ export class AcmeClient {
     const account = await this._ensureAccount()
     const challenge = await _getDns01Challenge(authz)
     const txt = await _digestTxt(challenge.token, account.publicKey)
-    const txtdomain = `_acme-challenge.${authz.identifier.value}`
+    const txtdomain = challengeDomain(authz.identifier.value)
 
     dns.setContext({ logger: this.logger })
     await dns.createTxtRecord({ fulldomain: txtdomain, txtvalue: txt })

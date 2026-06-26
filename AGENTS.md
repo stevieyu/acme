@@ -39,18 +39,19 @@ src/
 ├── dns/          # DNS 传播检测
 │   ├── resolver.ts   # resolveDns01Challenge：轮询 TXT 记录直到传播完成
 │   └── doh.ts        # DNS-over-HTTPS 查询（多 DoH 服务商）
-├── providers/    # DNS 提供商适配器（167 个）
+├── dnsapi/       # DNS 提供商适配器（167 个）
 │   ├── types.ts      # DnsProvider 接口
+│   ├── errors.ts     # DnsProviderError 错误类
 │   ├── base-http.ts  # HTTP Bearer Token 基类
 │   ├── base-hmac.ts  # HMAC 签名基类（腾讯云、阿里云等）
 │   ├── base-xml.ts   # XML API 基类
-│   ├── cf.ts         # Cloudflare（独立实现，最完整参考）
-│   ├── dp.ts         # DNSPod
-│   ├── ali.ts        # 阿里云
-│   ├── aws.ts        # AWS Route53
-│   ├── hetzner.ts    # Hetzner
-│   ├── pleskxml.ts   # Plesk XML API
-│   └── batch-*.ts    # 批量生成的轻量提供商（声明式配置）
+│   ├── dns_cf.ts     # Cloudflare（独立实现，最完整参考）
+│   ├── dns_dp.ts     # DNSPod
+│   ├── dns_ali.ts    # 阿里云
+│   ├── dns_aws.ts    # AWS Route53
+│   ├── dns_hetzner.ts # Hetzner
+│   ├── dns_pleskxml.ts # Plesk XML API
+│   └── dns_*.ts      # 其他提供商（一文件一 provider）
 └── util/         # 工具
     ├── logger.ts     # 分级日志
     ├── retry.ts      # 带退避的重试
@@ -87,6 +88,7 @@ import { AcmeClient } from './acme/client.js'
 - DNS 提供商 ID 使用短名（`cf`、`dp`、`ali`、`aws`）
 - 常量使用 `UPPER_SNAKE_CASE`，类型使用 PascalCase，函数使用 camelCase
 - 内部导出函数可用 `_` 前缀（如 `_createkey`、`_initAPI`）
+- `_`/`__` 前缀函数（如 `_send_signed_request`、`__trigger_validation`）刻意镜像 acme.sh 源码命名，注释 `// acme.sh Lxxxx` 一一对应行号。**不重命名为 camelCase**，以保持与 acme.sh 的对照关系
 
 ### 类型规范
 
@@ -104,16 +106,12 @@ import { AcmeClient } from './acme/client.js'
 
 ### 独立实现（复杂 API）
 
-参考 `src/providers/cf.ts`（Cloudflare）：
+参考 `src/dnsapi/dns_cf.ts`（Cloudflare）：
 
 1. 定义 `XxxOptions` 接口
 2. 继承 `HttpProviderBase` / `HmacProviderBase` / `XmlProviderBase`
-3. 实现 `addTxtRecord()` 和 `removeTxtRecord()`
-4. 在 `src/providers/index.ts` 注册
-
-### 批量声明（标准 REST API）
-
-对于使用标准 Bearer Token 的提供商，在对应 `batch-*.ts` 文件中添加声明即可，无需单独文件。
+3. 实现 `createTxtRecord()` 和 `deleteTxtRecord()`
+4. 在 `src/dnsapi/index.ts` 注册（import 类 + 在 `PROVIDERS` map 添加一行 + 在 re-exports 区段导出）
 
 ## 测试
 
@@ -139,6 +137,6 @@ pnpm lint    # tsc --noEmit 类型检查
 | 客户端主逻辑 | `src/acme/client.ts` |
 | CA 列表与 URL | `src/acme/directory.ts` |
 | DNS 传播检测 | `src/dns/resolver.ts` |
-| Cloudflare 参考实现 | `src/providers/cf.ts` |
+| Cloudflare 参考实现 | `src/dnsapi/dns_cf.ts` |
 | 使用示例 | `examples/acme.ts` |
 | 项目规则 | `.qoder/rules/ponytail.md` |

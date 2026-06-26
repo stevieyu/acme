@@ -1,7 +1,6 @@
 import { HttpProviderBase } from './base-http.ts'
 import type { TxtRecordInput } from './types.ts'
-import { DnsProviderError } from '../acme/errors.ts'
-
+import { DnsProviderError } from './errors.ts'
 export interface SelfhostOptions { user: string; password: string }
 export class SelfhostProvider extends HttpProviderBase {
   readonly id = 'selfhost'; readonly name = 'SelfHost.de'

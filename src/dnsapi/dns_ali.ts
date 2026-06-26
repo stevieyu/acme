@@ -1,7 +1,6 @@
 import { HmacProviderBase } from './base-hmac.ts'
 import type { TxtRecordInput } from './types.ts'
-import { DnsProviderError } from '../acme/errors.ts'
-
+import { DnsProviderError } from './errors.ts'
 export interface AliyunOptions {
   accessKeyId: string
   accessKeySecret: string

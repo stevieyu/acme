@@ -21,13 +21,3 @@ export class AcmeError extends Error {
     }
   }
 }
-
-export class DnsProviderError extends Error {
-  public readonly providerId: string
-
-  constructor(message: string, providerId: string) {
-    super(`[${providerId}] ${message}`)
-    this.name = 'DnsProviderError'
-    this.providerId = providerId
-  }
-}

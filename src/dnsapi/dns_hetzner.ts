@@ -1,7 +1,6 @@
 import { HttpProviderBase } from './base-http.ts'
 import type { TxtRecordInput } from './types.ts'
-import { DnsProviderError } from '../acme/errors.ts'
-
+import { DnsProviderError } from './errors.ts'
 export interface HetznerOptions { token: string }
 
 export class HetznerProvider extends HttpProviderBase {

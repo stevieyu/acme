@@ -1,7 +1,6 @@
 import { HttpProviderBase } from './base-http.ts'
 import type { TxtRecordInput } from './types.ts'
-import { DnsProviderError } from '../acme/errors.ts'
-
+import { DnsProviderError } from './errors.ts'
 export interface AcmeproxyOptions { url: string; username: string; password: string }
 export class AcmeproxyProvider extends HttpProviderBase {
   readonly id = 'acmeproxy'; readonly name = 'acme-proxy'

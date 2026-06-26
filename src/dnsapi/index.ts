@@ -141,446 +141,162 @@ import { ZiloreProvider, type ZiloreOptions } from './dns_zilore.ts'
 import { ZoneProvider, type ZoneOptions } from './dns_zone.ts'
 import { ZonomiProvider, type ZonomiOptions } from './dns_zonomi.ts'
 
-export type ProviderId =
-  | '1984'
-  | '1984hosting'
-  | 'acmedns'
-  | 'acmeproxy'
-  | 'active24'
-  | 'ait'
-  | 'ali'
-  | 'allinkl'
-  | 'arvan'
-  | 'aurora'
-  | 'autodns'
-  | 'aws'
-  | 'baidu'
-  | 'bunny'
-  | 'bytemill'
-  | 'centarra'
-  | 'centarra2'
-  | 'cf'
-  | 'cloudns'
-  | 'cloudns2'
-  | 'conoha'
-  | 'constellix'
-  | 'cpanel'
-  | 'cx'
-  | 'ddnss'
-  | 'desec'
-  | 'df'
-  | 'dgon'
-  | 'dnsimple'
-  | 'dnsmadeeasy'
-  | 'dnsservices'
-  | 'doapi'
-  | 'doho'
-  | 'dominion'
-  | 'dp'
-  | 'dreamhost'
-  | 'durabledns'
-  | 'dyn'
-  | 'dynu'
-  | 'dynv6'
-  | 'easydns'
-  | 'edgedns'
-  | 'euserv'
-  | 'exoscale'
-  | 'freedns'
-  | 'furnas'
-  | 'futurecms'
-  | 'gandi_livedns'
-  | 'gcloud'
-  | 'gcore'
-  | 'gd'
-  | 'he'
-  | 'hetzner'
-  | 'hetznercloud'
-  | 'hostingbe'
-  | 'hostup'
-  | 'huaweicloud'
-  | 'ilkera'
-  | 'infoblox'
-  | 'infomaniak'
-  | 'internetbs'
-  | 'inwx'
-  | 'ionos'
-  | 'ispconfig'
-  | 'jd'
-  | 'jiyou'
-  | 'joker'
-  | 'kapper'
-  | 'kappernet'
-  | 'kinghost'
-  | 'knot'
-  | 'kx'
-  | 'leaseweb'
-  | 'linode_v4'
-  | 'loopia'
-  | 'luadns'
-  | 'magicdns'
-  | 'mailru'
-  | 'mandant'
-  | 'me'
-  | 'mit'
-  | 'moe'
-  | 'mozilla'
-  | 'mydevil'
-  | 'mydnsjp'
-  | 'mythic'
-  | 'namecheap'
-  | 'namecom'
-  | 'namesilo'
-  | 'natro'
-  | 'nederhost'
-  | 'netcup'
-  | 'netlify'
-  | 'njalla'
-  | 'nsone'
-  | 'nw'
-  | 'oci'
-  | 'one'
-  | 'online'
-  | 'opends'
-  | 'ovh'
-  | 'pantheon'
-  | 'parkingcrew'
-  | 'pdd'
-  | 'pdns'
-  | 'pear'
-  | 'pleskxml'
-  | 'porkbun'
-  | 'py'
-  | 'qiniu'
-  | 'rackspace'
-  | 'rage4'
-  | 'regru'
-  | 'ru'
-  | 'scaleway'
-  | 'schlund'
-  | 'sedo'
-  | 'selectel'
-  | 'selfhost'
-  | 'servercow'
-  | 'simply'
-  | 'sit'
-  | 'spaceship'
-  | 'tencent'
-  | 'timeweb'
-  | 'transip'
-  | 'uno'
-  | 'us'
-  | 'variomedia'
-  | 'veesp'
-  | 'vercel'
-  | 'vscale'
-  | 'vultr'
-  | 'websupport'
-  | 'world4you'
-  | 'yandex'
-  | 'zeru'
-  | 'zilore'
-  | 'zone'
-  | 'zonomi'
+const PROVIDERS = {
+  '1984': (o: Nineteen84bOptions): DnsProvider => new Nineteen84bProvider(o),
+  '1984hosting': (o: Nineteen84Options): DnsProvider => new Nineteen84Provider(o),
+  'acmedns': (o: AcmednsOptions): DnsProvider => new AcmednsProvider(o),
+  'acmeproxy': (o: AcmeproxyOptions): DnsProvider => new AcmeproxyProvider(o),
+  'active24': (o: Active24Options): DnsProvider => new Active24Provider(o),
+  'ait': (o: AitOptions): DnsProvider => new AitProvider(o),
+  'ali': (o: AliyunOptions): DnsProvider => new AliyunProvider(o),
+  'allinkl': (o: AllinklOptions): DnsProvider => new AllinklProvider(o),
+  'arvan': (o: ArvanOptions): DnsProvider => new ArvanProvider(o),
+  'aurora': (o: AuroraOptions): DnsProvider => new AuroraProvider(o),
+  'autodns': (o: AutodnsOptions): DnsProvider => new AutodnsProvider(o),
+  'aws': (o: AwsOptions): DnsProvider => new AwsRoute53Provider(o),
+  'baidu': (o: BaiduOptions): DnsProvider => new BaiduProvider(o),
+  'bunny': (o: BunnyOptions): DnsProvider => new BunnyProvider(o),
+  'bytemill': (o: BytemillOptions): DnsProvider => new BytemillProvider(o),
+  'centarra': (o: CentarraOptions): DnsProvider => new CentarraProvider(o),
+  'centarra2': (o: Centarra2Options): DnsProvider => new Centarra2Provider(o),
+  'cf': (o: CloudflareOptions): DnsProvider => new CloudflareProvider(o),
+  'cloudns': (o: CloudnsOptions): DnsProvider => new CloudnsProvider(o),
+  'cloudns2': (o: Cloudns2Options): DnsProvider => new Cloudns2Provider(o),
+  'conoha': (o: ConohaOptions): DnsProvider => new ConohaProvider(o),
+  'constellix': (o: ConstellixOptions): DnsProvider => new ConstellixProvider(o),
+  'cpanel': (o: CpanelOptions): DnsProvider => new CpanelProvider(o),
+  'cx': (o: CloudxOptions): DnsProvider => new CloudxProvider(o),
+  'ddnss': (o: DdnssOptions): DnsProvider => new DdnssProvider(o),
+  'desec': (o: DesecOptions): DnsProvider => new DesecProvider(o),
+  'df': (o: DfeuOptions): DnsProvider => new DfeuProvider(o),
+  'dgon': (o: DgonOptions): DnsProvider => new DgonProvider(o),
+  'dnsimple': (o: DnsimpleOptions): DnsProvider => new DnsimpleProvider(o),
+  'dnsmadeeasy': (o: DnsmadeeasyOptions): DnsProvider => new DnsmadeeasyProvider(o),
+  'dnsservices': (o: DnsservicesOptions): DnsProvider => new DnsservicesProvider(o),
+  'doapi': (o: DoapiOptions): DnsProvider => new DoapiProvider(o),
+  'doho': (o: DohoOptions): DnsProvider => new DohoProvider(o),
+  'dominion': (o: DominionOptions): DnsProvider => new DominionProvider(o),
+  'dp': (o: DnspodOptions): DnsProvider => new DnspodProvider(o),
+  'dreamhost': (o: DreamhostOptions): DnsProvider => new DreamhostProvider(o),
+  'durabledns': (o: DurablednsOptions): DnsProvider => new DurablednsProvider(o),
+  'dyn': (o: DynOptions): DnsProvider => new DynProvider(o),
+  'dynu': (o: DynuOptions): DnsProvider => new DynuProvider(o),
+  'dynv6': (o: Dynv6Options): DnsProvider => new Dynv6Provider(o),
+  'easydns': (o: EasydnsOptions): DnsProvider => new EasydnsProvider(o),
+  'edgedns': (o: EdgednsOptions): DnsProvider => new EdgednsProvider(o),
+  'euserv': (o: EuservOptions): DnsProvider => new EuservProvider(o),
+  'exoscale': (o: ExoscaleOptions): DnsProvider => new ExoscaleProvider(o),
+  'freedns': (o: FreednsOptions): DnsProvider => new FreednsProvider(o),
+  'furnas': (o: FurnasOptions): DnsProvider => new FurnasProvider(o),
+  'futurecms': (o: FuturecmsOptions): DnsProvider => new FuturecmsProvider(o),
+  'gandi_livedns': (o: GandiLiveDnsOptions): DnsProvider => new GandiLiveDnsProvider(o),
+  'gcloud': (o: GcloudOptions): DnsProvider => new GcloudProvider(o),
+  'gcore': (o: GcoreOptions): DnsProvider => new GcoreProvider(o),
+  'gd': (o: GdOptions): DnsProvider => new GdProvider(o),
+  'he': (o: HeOptions): DnsProvider => new HeProvider(o),
+  'hetzner': (o: HetznerOptions): DnsProvider => new HetznerProvider(o),
+  'hetznercloud': (o: HetznercloudOptions): DnsProvider => new HetznercloudProvider(o),
+  'hostingbe': (o: HostingbeOptions): DnsProvider => new HostingbeProvider(o),
+  'hostup': (o: HostupOptions): DnsProvider => new HostupProvider(o),
+  'huaweicloud': (o: HuaweicloudOptions): DnsProvider => new HuaweicloudProvider(o),
+  'ilkera': (o: IlkeraOptions): DnsProvider => new IlkeraProvider(o),
+  'infoblox': (o: InfobloxOptions): DnsProvider => new InfobloxProvider(o),
+  'infomaniak': (o: InfomaniakOptions): DnsProvider => new InfomaniakProvider(o),
+  'internetbs': (o: InternetbsOptions): DnsProvider => new InternetbsProvider(o),
+  'inwx': (o: InwxOptions): DnsProvider => new InwxProvider(o),
+  'ionos': (o: IonosOptions): DnsProvider => new IonosProvider(o),
+  'ispconfig': (o: IspconfigOptions): DnsProvider => new IspconfigProvider(o),
+  'jd': (o: JdOptions): DnsProvider => new JdProvider(o),
+  'jiyou': (o: JiyouOptions): DnsProvider => new JiyouProvider(o),
+  'joker': (o: JokerOptions): DnsProvider => new JokerProvider(o),
+  'kapper': (o: KapperOptions): DnsProvider => new KapperProvider(o),
+  'kappernet': (o: KappernetOptions): DnsProvider => new KappernetProvider(o),
+  'kinghost': (o: KinghostOptions): DnsProvider => new KinghostProvider(o),
+  'knot': (o: KnotOptions): DnsProvider => new KnotProvider(o),
+  'kx': (o: KxOptions): DnsProvider => new KxProvider(o),
+  'leaseweb': (o: LeasewebOptions): DnsProvider => new LeasewebProvider(o),
+  'linode_v4': (o: LinodeV4Options): DnsProvider => new LinodeV4Provider(o),
+  'loopia': (o: LoopiaOptions): DnsProvider => new LoopiaProvider(o),
+  'luadns': (o: LuadnsOptions): DnsProvider => new LuadnsProvider(o),
+  'magicdns': (o: MagicdnsOptions): DnsProvider => new MagicdnsProvider(o),
+  'mailru': (o: MailruOptions): DnsProvider => new MailruProvider(o),
+  'mandant': (o: MandantOptions): DnsProvider => new MandantProvider(o),
+  'me': (o: MeOptions): DnsProvider => new MeProvider(o),
+  'mit': (o: MitOptions): DnsProvider => new MitProvider(o),
+  'moe': (o: MoeOptions): DnsProvider => new MoeProvider(o),
+  'mozilla': (o: MozillaOptions): DnsProvider => new MozillaProvider(o),
+  'mydevil': (o: MydevilOptions): DnsProvider => new MydevilProvider(o),
+  'mydnsjp': (o: MydnsjpOptions): DnsProvider => new MydnsjpProvider(o),
+  'mythic': (o: MythicOptions): DnsProvider => new MythicProvider(o),
+  'namecheap': (o: NamecheapOptions): DnsProvider => new NamecheapProvider(o),
+  'namecom': (o: NamecomOptions): DnsProvider => new NamecomProvider(o),
+  'namesilo': (o: NamesiloOptions): DnsProvider => new NamesiloProvider(o),
+  'natro': (o: NatroOptions): DnsProvider => new NatroProvider(o),
+  'nederhost': (o: NederhostOptions): DnsProvider => new NederhostProvider(o),
+  'netcup': (o: NetcupOptions): DnsProvider => new NetcupProvider(o),
+  'netlify': (o: NetlifyOptions): DnsProvider => new NetlifyProvider(o),
+  'njalla': (o: NjallaOptions): DnsProvider => new NjallaProvider(o),
+  'nsone': (o: NsoneOptions): DnsProvider => new NsoneProvider(o),
+  'nw': (o: NwOptions): DnsProvider => new NwProvider(o),
+  'oci': (o: OciOptions): DnsProvider => new OciProvider(o),
+  'one': (o: OnecomOptions): DnsProvider => new OnecomProvider(o),
+  'online': (o: OnlineOptions): DnsProvider => new OnlineProvider(o),
+  'opends': (o: OpendsOptions): DnsProvider => new OpendsProvider(o),
+  'ovh': (o: OvhOptions): DnsProvider => new OvhProvider(o),
+  'pantheon': (o: PantheonOptions): DnsProvider => new PantheonProvider(o),
+  'parkingcrew': (o: ParkingcrewOptions): DnsProvider => new ParkingcrewProvider(o),
+  'pdd': (o: PddOptions): DnsProvider => new PddProvider(o),
+  'pdns': (o: PowerdnsOptions): DnsProvider => new PowerdnsProvider(o),
+  'pear': (o: PearOptions): DnsProvider => new PearProvider(o),
+  'pleskxml': (o: PleskXmlOptions): DnsProvider => new PleskXmlProvider(o),
+  'porkbun': (o: PorkbunOptions): DnsProvider => new PorkbunProvider(o),
+  'py': (o: PyOptions): DnsProvider => new PyProvider(o),
+  'qiniu': (o: QiniuOptions): DnsProvider => new QiniuProvider(o),
+  'rackspace': (o: RackspaceOptions): DnsProvider => new RackspaceProvider(o),
+  'rage4': (o: Rage4Options): DnsProvider => new Rage4Provider(o),
+  'regru': (o: RegruOptions): DnsProvider => new RegruProvider(o),
+  'ru': (o: RuOptions): DnsProvider => new RuProvider(o),
+  'scaleway': (o: ScalewayOptions): DnsProvider => new ScalewayProvider(o),
+  'schlund': (o: SchlundOptions): DnsProvider => new SchlundProvider(o),
+  'sedo': (o: SedoOptions): DnsProvider => new SedoProvider(o),
+  'selectel': (o: SelectelOptions): DnsProvider => new SelectelProvider(o),
+  'selfhost': (o: SelfhostOptions): DnsProvider => new SelfhostProvider(o),
+  'servercow': (o: ServercowOptions): DnsProvider => new ServercowProvider(o),
+  'simply': (o: SimplyOptions): DnsProvider => new SimplyProvider(o),
+  'sit': (o: SitOptions): DnsProvider => new SitProvider(o),
+  'spaceship': (o: SpaceshipOptions): DnsProvider => new SpaceshipProvider(o),
+  'tencent': (o: TencentOptions): DnsProvider => new TencentProvider(o),
+  'timeweb': (o: TimewebOptions): DnsProvider => new TimewebProvider(o),
+  'transip': (o: TransipOptions): DnsProvider => new TransipProvider(o),
+  'uno': (o: UnoOptions): DnsProvider => new UnoProvider(o),
+  'us': (o: UsOptions): DnsProvider => new UsProvider(o),
+  'variomedia': (o: VariomediaOptions): DnsProvider => new VariomediaProvider(o),
+  'veesp': (o: VeespOptions): DnsProvider => new VeespProvider(o),
+  'vercel': (o: VercelOptions): DnsProvider => new VercelProvider(o),
+  'vscale': (o: VscaleOptions): DnsProvider => new VscaleProvider(o),
+  'vultr': (o: VultrOptions): DnsProvider => new VultrProvider(o),
+  'websupport': (o: WebsupportOptions): DnsProvider => new WebsupportProvider(o),
+  'world4you': (o: World4youOptions): DnsProvider => new World4youProvider(o),
+  'yandex': (o: YandexOptions): DnsProvider => new YandexProvider(o),
+  'zeru': (o: ZeruOptions): DnsProvider => new ZeruProvider(o),
+  'zilore': (o: ZiloreOptions): DnsProvider => new ZiloreProvider(o),
+  'zone': (o: ZoneOptions): DnsProvider => new ZoneProvider(o),
+  'zonomi': (o: ZonomiOptions): DnsProvider => new ZonomiProvider(o),
+} as const
 
-type Opts = unknown
+export type ProviderId = keyof typeof PROVIDERS
+type OptionsOf<K extends ProviderId> = Parameters<typeof PROVIDERS[K]>[0]
 
-interface ProviderOptionsMap {
-  '1984': Nineteen84bOptions
-  '1984hosting': Nineteen84Options
-  'acmedns': AcmednsOptions
-  'acmeproxy': AcmeproxyOptions
-  'active24': Active24Options
-  'ait': AitOptions
-  'ali': AliyunOptions
-  'allinkl': AllinklOptions
-  'arvan': ArvanOptions
-  'aurora': AuroraOptions
-  'autodns': AutodnsOptions
-  'aws': AwsOptions
-  'baidu': BaiduOptions
-  'bunny': BunnyOptions
-  'bytemill': BytemillOptions
-  'centarra': CentarraOptions
-  'centarra2': Centarra2Options
-  'cf': CloudflareOptions
-  'cloudns': CloudnsOptions
-  'cloudns2': Cloudns2Options
-  'conoha': ConohaOptions
-  'constellix': ConstellixOptions
-  'cpanel': CpanelOptions
-  'cx': CloudxOptions
-  'ddnss': DdnssOptions
-  'desec': DesecOptions
-  'df': DfeuOptions
-  'dgon': DgonOptions
-  'dnsimple': DnsimpleOptions
-  'dnsmadeeasy': DnsmadeeasyOptions
-  'dnsservices': DnsservicesOptions
-  'doapi': DoapiOptions
-  'doho': DohoOptions
-  'dominion': DominionOptions
-  'dp': DnspodOptions
-  'dreamhost': DreamhostOptions
-  'durabledns': DurablednsOptions
-  'dyn': DynOptions
-  'dynu': DynuOptions
-  'dynv6': Dynv6Options
-  'easydns': EasydnsOptions
-  'edgedns': EdgednsOptions
-  'euserv': EuservOptions
-  'exoscale': ExoscaleOptions
-  'freedns': FreednsOptions
-  'furnas': FurnasOptions
-  'futurecms': FuturecmsOptions
-  'gandi_livedns': GandiLiveDnsOptions
-  'gcloud': GcloudOptions
-  'gcore': GcoreOptions
-  'gd': GdOptions
-  'he': HeOptions
-  'hetzner': HetznerOptions
-  'hetznercloud': HetznercloudOptions
-  'hostingbe': HostingbeOptions
-  'hostup': HostupOptions
-  'huaweicloud': HuaweicloudOptions
-  'ilkera': IlkeraOptions
-  'infoblox': InfobloxOptions
-  'infomaniak': InfomaniakOptions
-  'internetbs': InternetbsOptions
-  'inwx': InwxOptions
-  'ionos': IonosOptions
-  'ispconfig': IspconfigOptions
-  'jd': JdOptions
-  'jiyou': JiyouOptions
-  'joker': JokerOptions
-  'kapper': KapperOptions
-  'kappernet': KappernetOptions
-  'kinghost': KinghostOptions
-  'knot': KnotOptions
-  'kx': KxOptions
-  'leaseweb': LeasewebOptions
-  'linode_v4': LinodeV4Options
-  'loopia': LoopiaOptions
-  'luadns': LuadnsOptions
-  'magicdns': MagicdnsOptions
-  'mailru': MailruOptions
-  'mandant': MandantOptions
-  'me': MeOptions
-  'mit': MitOptions
-  'moe': MoeOptions
-  'mozilla': MozillaOptions
-  'mydevil': MydevilOptions
-  'mydnsjp': MydnsjpOptions
-  'mythic': MythicOptions
-  'namecheap': NamecheapOptions
-  'namecom': NamecomOptions
-  'namesilo': NamesiloOptions
-  'natro': NatroOptions
-  'nederhost': NederhostOptions
-  'netcup': NetcupOptions
-  'netlify': NetlifyOptions
-  'njalla': NjallaOptions
-  'nsone': NsoneOptions
-  'nw': NwOptions
-  'oci': OciOptions
-  'one': OnecomOptions
-  'online': OnlineOptions
-  'opends': OpendsOptions
-  'ovh': OvhOptions
-  'pantheon': PantheonOptions
-  'parkingcrew': ParkingcrewOptions
-  'pdd': PddOptions
-  'pdns': PowerdnsOptions
-  'pear': PearOptions
-  'pleskxml': PleskXmlOptions
-  'porkbun': PorkbunOptions
-  'py': PyOptions
-  'qiniu': QiniuOptions
-  'rackspace': RackspaceOptions
-  'rage4': Rage4Options
-  'regru': RegruOptions
-  'ru': RuOptions
-  'scaleway': ScalewayOptions
-  'schlund': SchlundOptions
-  'sedo': SedoOptions
-  'selectel': SelectelOptions
-  'selfhost': SelfhostOptions
-  'servercow': ServercowOptions
-  'simply': SimplyOptions
-  'sit': SitOptions
-  'spaceship': SpaceshipOptions
-  'tencent': TencentOptions
-  'timeweb': TimewebOptions
-  'transip': TransipOptions
-  'uno': UnoOptions
-  'us': UsOptions
-  'variomedia': VariomediaOptions
-  'veesp': VeespOptions
-  'vercel': VercelOptions
-  'vscale': VscaleOptions
-  'vultr': VultrOptions
-  'websupport': WebsupportOptions
-  'world4you': World4youOptions
-  'yandex': YandexOptions
-  'zeru': ZeruOptions
-  'zilore': ZiloreOptions
-  'zone': ZoneOptions
-  'zonomi': ZonomiOptions
-}
-
-type ProviderIdList = keyof ProviderOptionsMap
-
-export function getProvider<K extends ProviderIdList>(id: K, options: ProviderOptionsMap[K], ctx?: DnsProviderContext): DnsProvider {
-  const p = _createProvider(id, options)
+export function getProvider<K extends ProviderId>(
+  id: K,
+  options: OptionsOf<K>,
+  ctx?: DnsProviderContext,
+): DnsProvider {
+  const factory = PROVIDERS[id] as ((o: OptionsOf<K>) => DnsProvider) | undefined
+  if (!factory) throw new Error(`Unknown provider: ${id as string}`)
+  const p = factory(options)
   if (ctx) p.setContext(ctx)
   return p
-}
-
-function _createProvider<K extends ProviderIdList>(id: K, options: ProviderOptionsMap[K]): DnsProvider {
-  const o = options as unknown as Opts
-  switch (id) {
-    case '1984': return new Nineteen84bProvider(o as Nineteen84bOptions)
-    case '1984hosting': return new Nineteen84Provider(o as Nineteen84Options)
-    case 'acmedns': return new AcmednsProvider(o as AcmednsOptions)
-    case 'acmeproxy': return new AcmeproxyProvider(o as AcmeproxyOptions)
-    case 'active24': return new Active24Provider(o as Active24Options)
-    case 'ait': return new AitProvider(o as AitOptions)
-    case 'ali': return new AliyunProvider(o as AliyunOptions)
-    case 'allinkl': return new AllinklProvider(o as AllinklOptions)
-    case 'arvan': return new ArvanProvider(o as ArvanOptions)
-    case 'aurora': return new AuroraProvider(o as AuroraOptions)
-    case 'autodns': return new AutodnsProvider(o as AutodnsOptions)
-    case 'aws': return new AwsRoute53Provider(o as AwsOptions)
-    case 'baidu': return new BaiduProvider(o as BaiduOptions)
-    case 'bunny': return new BunnyProvider(o as BunnyOptions)
-    case 'bytemill': return new BytemillProvider(o as BytemillOptions)
-    case 'centarra': return new CentarraProvider(o as CentarraOptions)
-    case 'centarra2': return new Centarra2Provider(o as Centarra2Options)
-    case 'cf': return new CloudflareProvider(o as CloudflareOptions)
-    case 'cloudns': return new CloudnsProvider(o as CloudnsOptions)
-    case 'cloudns2': return new Cloudns2Provider(o as Cloudns2Options)
-    case 'conoha': return new ConohaProvider(o as ConohaOptions)
-    case 'constellix': return new ConstellixProvider(o as ConstellixOptions)
-    case 'cpanel': return new CpanelProvider(o as CpanelOptions)
-    case 'cx': return new CloudxProvider(o as CloudxOptions)
-    case 'ddnss': return new DdnssProvider(o as DdnssOptions)
-    case 'desec': return new DesecProvider(o as DesecOptions)
-    case 'df': return new DfeuProvider(o as DfeuOptions)
-    case 'dgon': return new DgonProvider(o as DgonOptions)
-    case 'dnsimple': return new DnsimpleProvider(o as DnsimpleOptions)
-    case 'dnsmadeeasy': return new DnsmadeeasyProvider(o as DnsmadeeasyOptions)
-    case 'dnsservices': return new DnsservicesProvider(o as DnsservicesOptions)
-    case 'doapi': return new DoapiProvider(o as DoapiOptions)
-    case 'doho': return new DohoProvider(o as DohoOptions)
-    case 'dominion': return new DominionProvider(o as DominionOptions)
-    case 'dp': return new DnspodProvider(o as DnspodOptions)
-    case 'dreamhost': return new DreamhostProvider(o as DreamhostOptions)
-    case 'durabledns': return new DurablednsProvider(o as DurablednsOptions)
-    case 'dyn': return new DynProvider(o as DynOptions)
-    case 'dynu': return new DynuProvider(o as DynuOptions)
-    case 'dynv6': return new Dynv6Provider(o as Dynv6Options)
-    case 'easydns': return new EasydnsProvider(o as EasydnsOptions)
-    case 'edgedns': return new EdgednsProvider(o as EdgednsOptions)
-    case 'euserv': return new EuservProvider(o as EuservOptions)
-    case 'exoscale': return new ExoscaleProvider(o as ExoscaleOptions)
-    case 'freedns': return new FreednsProvider(o as FreednsOptions)
-    case 'furnas': return new FurnasProvider(o as FurnasOptions)
-    case 'futurecms': return new FuturecmsProvider(o as FuturecmsOptions)
-    case 'gandi_livedns': return new GandiLiveDnsProvider(o as GandiLiveDnsOptions)
-    case 'gcloud': return new GcloudProvider(o as GcloudOptions)
-    case 'gcore': return new GcoreProvider(o as GcoreOptions)
-    case 'gd': return new GdProvider(o as GdOptions)
-    case 'he': return new HeProvider(o as HeOptions)
-    case 'hetzner': return new HetznerProvider(o as HetznerOptions)
-    case 'hetznercloud': return new HetznercloudProvider(o as HetznercloudOptions)
-    case 'hostingbe': return new HostingbeProvider(o as HostingbeOptions)
-    case 'hostup': return new HostupProvider(o as HostupOptions)
-    case 'huaweicloud': return new HuaweicloudProvider(o as HuaweicloudOptions)
-    case 'ilkera': return new IlkeraProvider(o as IlkeraOptions)
-    case 'infoblox': return new InfobloxProvider(o as InfobloxOptions)
-    case 'infomaniak': return new InfomaniakProvider(o as InfomaniakOptions)
-    case 'internetbs': return new InternetbsProvider(o as InternetbsOptions)
-    case 'inwx': return new InwxProvider(o as InwxOptions)
-    case 'ionos': return new IonosProvider(o as IonosOptions)
-    case 'ispconfig': return new IspconfigProvider(o as IspconfigOptions)
-    case 'jd': return new JdProvider(o as JdOptions)
-    case 'jiyou': return new JiyouProvider(o as JiyouOptions)
-    case 'joker': return new JokerProvider(o as JokerOptions)
-    case 'kapper': return new KapperProvider(o as KapperOptions)
-    case 'kappernet': return new KappernetProvider(o as KappernetOptions)
-    case 'kinghost': return new KinghostProvider(o as KinghostOptions)
-    case 'knot': return new KnotProvider(o as KnotOptions)
-    case 'kx': return new KxProvider(o as KxOptions)
-    case 'leaseweb': return new LeasewebProvider(o as LeasewebOptions)
-    case 'linode_v4': return new LinodeV4Provider(o as LinodeV4Options)
-    case 'loopia': return new LoopiaProvider(o as LoopiaOptions)
-    case 'luadns': return new LuadnsProvider(o as LuadnsOptions)
-    case 'magicdns': return new MagicdnsProvider(o as MagicdnsOptions)
-    case 'mailru': return new MailruProvider(o as MailruOptions)
-    case 'mandant': return new MandantProvider(o as MandantOptions)
-    case 'me': return new MeProvider(o as MeOptions)
-    case 'mit': return new MitProvider(o as MitOptions)
-    case 'moe': return new MoeProvider(o as MoeOptions)
-    case 'mozilla': return new MozillaProvider(o as MozillaOptions)
-    case 'mydevil': return new MydevilProvider(o as MydevilOptions)
-    case 'mydnsjp': return new MydnsjpProvider(o as MydnsjpOptions)
-    case 'mythic': return new MythicProvider(o as MythicOptions)
-    case 'namecheap': return new NamecheapProvider(o as NamecheapOptions)
-    case 'namecom': return new NamecomProvider(o as NamecomOptions)
-    case 'namesilo': return new NamesiloProvider(o as NamesiloOptions)
-    case 'natro': return new NatroProvider(o as NatroOptions)
-    case 'nederhost': return new NederhostProvider(o as NederhostOptions)
-    case 'netcup': return new NetcupProvider(o as NetcupOptions)
-    case 'netlify': return new NetlifyProvider(o as NetlifyOptions)
-    case 'njalla': return new NjallaProvider(o as NjallaOptions)
-    case 'nsone': return new NsoneProvider(o as NsoneOptions)
-    case 'nw': return new NwProvider(o as NwOptions)
-    case 'oci': return new OciProvider(o as OciOptions)
-    case 'one': return new OnecomProvider(o as OnecomOptions)
-    case 'online': return new OnlineProvider(o as OnlineOptions)
-    case 'opends': return new OpendsProvider(o as OpendsOptions)
-    case 'ovh': return new OvhProvider(o as OvhOptions)
-    case 'pantheon': return new PantheonProvider(o as PantheonOptions)
-    case 'parkingcrew': return new ParkingcrewProvider(o as ParkingcrewOptions)
-    case 'pdd': return new PddProvider(o as PddOptions)
-    case 'pdns': return new PowerdnsProvider(o as PowerdnsOptions)
-    case 'pear': return new PearProvider(o as PearOptions)
-    case 'pleskxml': return new PleskXmlProvider(o as PleskXmlOptions)
-    case 'porkbun': return new PorkbunProvider(o as PorkbunOptions)
-    case 'py': return new PyProvider(o as PyOptions)
-    case 'qiniu': return new QiniuProvider(o as QiniuOptions)
-    case 'rackspace': return new RackspaceProvider(o as RackspaceOptions)
-    case 'rage4': return new Rage4Provider(o as Rage4Options)
-    case 'regru': return new RegruProvider(o as RegruOptions)
-    case 'ru': return new RuProvider(o as RuOptions)
-    case 'scaleway': return new ScalewayProvider(o as ScalewayOptions)
-    case 'schlund': return new SchlundProvider(o as SchlundOptions)
-    case 'sedo': return new SedoProvider(o as SedoOptions)
-    case 'selectel': return new SelectelProvider(o as SelectelOptions)
-    case 'selfhost': return new SelfhostProvider(o as SelfhostOptions)
-    case 'servercow': return new ServercowProvider(o as ServercowOptions)
-    case 'simply': return new SimplyProvider(o as SimplyOptions)
-    case 'sit': return new SitProvider(o as SitOptions)
-    case 'spaceship': return new SpaceshipProvider(o as SpaceshipOptions)
-    case 'tencent': return new TencentProvider(o as TencentOptions)
-    case 'timeweb': return new TimewebProvider(o as TimewebOptions)
-    case 'transip': return new TransipProvider(o as TransipOptions)
-    case 'uno': return new UnoProvider(o as UnoOptions)
-    case 'us': return new UsProvider(o as UsOptions)
-    case 'variomedia': return new VariomediaProvider(o as VariomediaOptions)
-    case 'veesp': return new VeespProvider(o as VeespOptions)
-    case 'vercel': return new VercelProvider(o as VercelOptions)
-    case 'vscale': return new VscaleProvider(o as VscaleOptions)
-    case 'vultr': return new VultrProvider(o as VultrOptions)
-    case 'websupport': return new WebsupportProvider(o as WebsupportOptions)
-    case 'world4you': return new World4youProvider(o as World4youOptions)
-    case 'yandex': return new YandexProvider(o as YandexOptions)
-    case 'zeru': return new ZeruProvider(o as ZeruOptions)
-    case 'zilore': return new ZiloreProvider(o as ZiloreOptions)
-    case 'zone': return new ZoneProvider(o as ZoneOptions)
-    case 'zonomi': return new ZonomiProvider(o as ZonomiOptions)
-    default: throw new Error(`Unknown provider: ${id as string}`)
-  }
 }
 
 // ─── Re-exports ──────────────────────────────────────────────────

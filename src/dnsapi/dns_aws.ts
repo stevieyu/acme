@@ -1,5 +1,5 @@
 import type { DnsProvider, DnsProviderContext, TxtRecordInput } from './types.ts'
-import { DnsProviderError } from '../acme/errors.ts'
+import { DnsProviderError } from './errors.ts'
 import { _url_replace } from '../crypto/digest.ts'
 
 export interface AwsOptions {

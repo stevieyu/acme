@@ -1,6 +1,6 @@
 import { HttpProviderBase } from './base-http.ts'
 import type { TxtRecordInput } from './types.ts'
-import { DnsProviderError } from '../acme/errors.ts'
+import { DnsProviderError } from './errors.ts'
 import { split2 } from './_util.ts'
 
 export interface JokerOptions { apiKey: string }

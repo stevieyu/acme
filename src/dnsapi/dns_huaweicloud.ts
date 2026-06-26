@@ -1,7 +1,6 @@
 import { HttpProviderBase } from './base-http.ts'
 import type { TxtRecordInput } from './types.ts'
-import { DnsProviderError } from '../acme/errors.ts'
-
+import { DnsProviderError } from './errors.ts'
 export interface HuaweicloudOptions { accessKeyId: string; secretAccessKey: string }
 export class HuaweicloudProvider extends HttpProviderBase {
   readonly id = 'huaweicloud'; readonly name = 'Huawei Cloud DNS'

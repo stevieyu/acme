@@ -1,8 +1,7 @@
 import { XmlProviderBase } from './base-xml.ts'
 import { split2 } from './_util.ts'
 import type { TxtRecordInput } from './types.ts'
-import { DnsProviderError } from '../acme/errors.ts'
-
+import { DnsProviderError } from './errors.ts'
 export interface PleskXmlOptions { url: string; user: string; password: string }
 
 export class PleskXmlProvider extends XmlProviderBase {

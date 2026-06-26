@@ -12,3 +12,4 @@ coverage/
 
 *.pem
 acme.sh
+.trae

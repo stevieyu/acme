@@ -1,7 +1,6 @@
 import { HttpProviderBase } from './base-http.ts'
 import type { TxtRecordInput } from './types.ts'
-import { DnsProviderError } from '../acme/errors.ts'
-
+import { DnsProviderError } from './errors.ts'
 export interface LuadnsOptions { email: string; apiKey: string }
 export class LuadnsProvider extends HttpProviderBase {
   readonly id = 'luadns'; readonly name = 'LuaDNS'

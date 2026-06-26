@@ -146,24 +146,10 @@ export async function _downloadCert(
   privateKey: CryptoKey,
   kid: string,
 ): Promise<string> {
-  const nonce = await http['noncePool'].pop(() => http._getNonce())
-  const jws = await _signWithKid(privateKey, kid, null, Le_LinkCert, nonce)
-
-  const response = await fetch(Le_LinkCert, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/jose+json',
-      'Accept': 'application/pem-certificate-chain',
-    },
-    body: JSON.stringify(jws),
-  })
-
-  http['noncePool'].push(response.headers.get('replay-nonce'))
-
-  if (!response.ok) {
-    const body = await response.text()
-    throw AcmeError.fromResponse(response.status, body)
-  }
-
-  return response.text()
+  const response = await http._sendSignedRequestText(
+    Le_LinkCert,
+    (nonce) => _signWithKid(privateKey, kid, null, Le_LinkCert, nonce),
+    'application/pem-certificate-chain',
+  )
+  return response.data
 }

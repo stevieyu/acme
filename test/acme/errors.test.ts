@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { AcmeError, DnsProviderError } from '../../src/acme/errors.ts'
+import { AcmeError } from '../../src/acme/errors.ts'
+import { DnsProviderError } from '../../src/dnsapi/errors.ts'
 
 describe('AcmeError', () => {
   it('parses problem+json', () => {

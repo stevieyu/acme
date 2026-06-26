@@ -1,7 +1,6 @@
 import { HttpProviderBase } from './base-http.ts'
 import type { TxtRecordInput } from './types.ts'
-import { DnsProviderError } from '../acme/errors.ts'
-
+import { DnsProviderError } from './errors.ts'
 export interface Rage4Options { email: string; token: string }
 export class Rage4Provider extends HttpProviderBase {
   readonly id = 'rage4'; readonly name = 'Rage4'
